@@ -1,11 +1,5 @@
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD
-
-firmware_url = "https://raw.githubusercontent.com/gkutyi/Berger-LiFePo4-BLE2MQTT/main"
-
-ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
-ota_updater.download_and_install_update_if_available()
-
 from mqtt import MQTTClient
 from umqtt.simple import MQTTClient
 import ubluetooth as bluetooth
@@ -84,11 +78,9 @@ def check_ota_update():
 
 # OTA-Update durchführen
 def perform_ota_update():
-    # Hier implementieren Sie den Code für das OTA-Update
-    # Zum Beispiel:
-    # 1. Verbindung zum OTA-Server herstellen
-    # 2. Neue Firmware herunterladen
-    # 3. Aktualisierung durchführen
+    firmware_url = "https://raw.githubusercontent.com/gkutyi/Berger-LiFePo4-BLE2MQTT/main"
+    ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
+    ota_updater.download_and_install_update_if_available()
     pass
 
 # BLE-Scan starten
