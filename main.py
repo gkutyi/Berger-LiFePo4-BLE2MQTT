@@ -100,8 +100,8 @@ def start_ble_scan():
     ble.irq(handler=lambda x: None)  # Set IRQ handler
     ble.gap_scan(1)  # Enable scanning
 
-# Set the scan callback
-ble.irq(handler=scan_callback)
+    # Set the scan callback
+    ble.irq(handler=scan_callback)
 
 # Wi-Fi-Verbindung herstellen
 def connect_wifi():
