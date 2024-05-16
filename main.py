@@ -100,11 +100,8 @@ def perform_ota_update():
 def start_ble_scan():
     ble.active(True)
     ble.gap_scan(0)  # Start scanning, 0 means continuous scanning
-    ble.irq(handler=lambda x: None)  # Set IRQ handler
-    ble.gap_scan(1)  # Enable scanning
-
-    # Set the scan callback
-    ble.irq(handler=scan_callback)
+    ble.irq(scan_callback) # Set the scan callback
+    ble.gap_scan(1)  # Enable scanning     
 
 # Wi-Fi-Verbindung herstellen
 def connect_wifi():
