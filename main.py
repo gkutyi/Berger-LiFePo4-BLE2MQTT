@@ -86,7 +86,7 @@ def perform_ota_update():
 
 # BLE-Scan starten
 def start_ble_scan():
-    bluetooth.set_advertisement(True)
+#    bluetooth.set_advertisement(True)
     bluetooth.init()
     bluetooth.start_scan(-1)
     bluetooth.set_callback(scan_callback)
