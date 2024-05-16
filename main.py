@@ -1,6 +1,6 @@
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD
-from umqtt.simple import MQTTClient
+from BROKER import MMQTT_BROKER_IP, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE
 from umqtt.simple import MQTTClient
 import ubluetooth as bluetooth
 import time
@@ -20,8 +20,8 @@ mqtt_topic = 'topic'
 ota_topic = 'ota_update'
 
 # Wi-Fi-Verbindungsdetails
-wifi_ssid = 'wifi_ssid'
-wifi_password = 'wifi_password'
+wifi_ssid = SSID
+wifi_password = PASSWORD
 
 # MQTT-Client-Instanz erstellen
 mqtt_client = None
