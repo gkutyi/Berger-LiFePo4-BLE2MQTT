@@ -2,11 +2,14 @@ from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 from umqtt.simple import MQTTClient
-import ubluetooth as bluetooth
+import ubluetooth
 import time
 import network
 import machine
 import urequests
+
+# Create a BLE object
+ble = ubluetooth.BLE()
 
 # MAC-Adresse des BLE-Geräts
 ble_address = 'XX:XX:XX:XX:XX:XX'
@@ -86,10 +89,13 @@ def perform_ota_update():
 
 # BLE-Scan starten
 def start_ble_scan():
-#    bluetooth.set_advertisement(True)
-    bluetooth.init()
-    bluetooth.start_scan(-1)
-    bluetooth.set_callback(scan_callback)
+    ble.active(True)
+    ble.gap_scan(0)  # Start scanning, 0 means continuous scanning
+    ble.irq(handler=lambda x: None)  # Set IRQ handler
+    ble.gap_scan(1)  # Enable scanning
+
+# Set the scan callback
+ble.irq(handler=scan_callback)
 
 # Wi-Fi-Verbindung herstellen
 def connect_wifi():
