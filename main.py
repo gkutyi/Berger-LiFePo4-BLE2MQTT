@@ -85,6 +85,7 @@ def check_ota_update():
     # Über MQTT prüfen, ob ein OTA-Update erforderlich ist
     mqtt_client.subscribe(ota_topic)
     while True:
+        print('in check_ota_update_wait_for_message')
         if mqtt_client.check_msg():
             msg = mqtt_client.recv_msg()
             print('Message received:', msg)
