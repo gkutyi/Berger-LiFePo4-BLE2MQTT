@@ -35,13 +35,13 @@ mqtt_client = None
 
 # Callback-Funktion für das BLE-Scanergebnis
 def scan_callback(event, data):
-    if event == bluetooth.EVT_GAP_SCAN_RESULT:
+    if event == 1: # EVT_GAP_SCAN_RESULT
         # Parse the data to extract information about the scanned device
         _, addr_type, addr, _, _, adv_data = data
         print("Found device with address:", addr)
         print("Address type:", addr_type)
         print("Advertisement data:", adv_data)
-    if event == bluetooth.EVENT_ADV_IND:
+    if event == 3: # EVENT_ADV_IND
         addr_type, addr, adv_type, rssi, adv_data = data
         if addr == ble_address:
             # Verbindung herstellen
