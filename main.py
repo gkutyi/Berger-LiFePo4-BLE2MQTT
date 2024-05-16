@@ -2,14 +2,17 @@ from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 from umqtt.simple import MQTTClient
-import ubluetooth
+import ubluetooth as bluetooth
 import time
 import network
 import machine
 import urequests
 
+# Define the UUID of the characteristic
+CHARACTERISTIC_UUID = '00001101-0000-1000-8000-00805F9B34FB'
+
 # Create a BLE object
-ble = ubluetooth.BLE()
+ble = bluetooth.BLE()
 
 # MAC-Adresse des BLE-Geräts
 ble_address = 'XX:XX:XX:XX:XX:XX'
@@ -32,7 +35,7 @@ mqtt_client = None
 
 # Callback-Funktion für das BLE-Scanergebnis
 def scan_callback(event, data):
-    if event == ubluetooth.EVT_GAP_SCAN_RESULT:
+    if event == bluetooth.EVT_GAP_SCAN_RESULT:
         # Parse the data to extract information about the scanned device
         _, addr_type, addr, _, _, adv_data = data
         print("Found device with address:", addr)
