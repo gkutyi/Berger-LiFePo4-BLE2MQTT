@@ -66,6 +66,11 @@ def scan_callback(event, data):
 # Callback-Funktion für eingehende MQTT-Nachrichten
 def mqtt_callback(topic, msg):
     print("Received message on topic:", topic.decode(), "with message:", msg.decode())
+    if msg is not None and topic.decode() == ota_topic:
+    # Nachricht zum Starten des OTA-Updates empfangen
+        print('OTA update message received.', msg.decode)
+        # Hier können Sie das OTA-Update durchführen
+        perform_ota_update()
     
 # Verbindung zu MQTT-Broker herstellen
 def connect_mqtt():
@@ -87,14 +92,9 @@ def check_ota_update():
     # Über MQTT prüfen, ob ein OTA-Update erforderlich ist
     mqtt_client.subscribe(ota_topic)
     while True:
-        msg = mqtt_client.check_msg()  # Check for incoming message
+        mqtt_client.check_msg()  # Check for incoming message
         time.sleep(1)  # Wait a short time
         print('Message received:', msg)
-        if msg is not None and msg.topic.decode() == ota_topic:
-            # Nachricht zum Starten des OTA-Updates empfangen
-            print('OTA update message received.')
-            # Hier können Sie das OTA-Update durchführen
-            perform_ota_update()
 
 # OTA-Update durchführen
 def perform_ota_update():
