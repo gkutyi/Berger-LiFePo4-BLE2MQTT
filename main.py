@@ -12,12 +12,12 @@ import urequests
 ble_address = 'XX:XX:XX:XX:XX:XX'
 
 # MQTT-Verbindungsdetails
-mqtt_broker = 'mqtt_broker_ip'
-mqtt_port = 8883
-mqtt_user = 'mqtt_username'
-mqtt_password = 'mqtt_password'
-mqtt_topic = 'topic'
-ota_topic = 'ota_update'
+mqtt_broker = MQTT_BROKER
+mqtt_port = MQTT_PORT
+mqtt_user = MQTT_USER
+mqtt_password = MQTT_PW
+mqtt_topic = MQTT_TOPIC
+ota_topic = MQTT_OTA_UPDATE
 
 # Wi-Fi-Verbindungsdetails
 wifi_ssid = SSID
