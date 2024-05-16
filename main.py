@@ -62,10 +62,15 @@ def scan_callback(event, data):
                             # Sende Wert über MQTT
                             publish_to_mqtt(value)
 
+# Callback-Funktion für eingehende MQTT-Nachrichten
+def mqtt_callback(topic, msg):
+    print("Received message on topic:", topic.decode(), "with message:", msg.decode())
+    
 # Verbindung zu MQTT-Broker herstellen
 def connect_mqtt():
     global mqtt_client
     mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=mqtt_ssl)
+    mqtt_client.set_callback(mqtt_callback)  # Set the callback function
     mqtt_client.connect()
 
 # Nachricht über MQTT veröffentlichen
