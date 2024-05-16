@@ -94,7 +94,6 @@ def check_ota_update():
     while True:
         mqtt_client.check_msg()  # Check for incoming message
         time.sleep(1)  # Wait a short time
-        print('Message received:', msg)
 
 # OTA-Update durchführen
 def perform_ota_update():
