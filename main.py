@@ -52,7 +52,7 @@ def scan_callback(event, data):
 # Verbindung zu MQTT-Broker herstellen
 def connect_mqtt():
     global mqtt_client
-    mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=True)
+    mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=False)
     mqtt_client.connect()
 
 # Nachricht über MQTT veröffentlichen
