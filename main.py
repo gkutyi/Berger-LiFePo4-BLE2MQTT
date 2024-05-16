@@ -1,6 +1,6 @@
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD
-from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE
+from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 from umqtt.simple import MQTTClient
 import ubluetooth as bluetooth
 import time
@@ -18,6 +18,7 @@ mqtt_user = MQTT_USER
 mqtt_password = MQTT_PW
 mqtt_topic = MQTT_TOPIC
 ota_topic = MQTT_OTA_UPDATE
+mqtt_ssl = MQTT_SSL
 
 # Wi-Fi-Verbindungsdetails
 wifi_ssid = SSID
@@ -52,7 +53,7 @@ def scan_callback(event, data):
 # Verbindung zu MQTT-Broker herstellen
 def connect_mqtt():
     global mqtt_client
-    mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=False)
+    mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=mqtt_ssl)
     mqtt_client.connect()
 
 # Nachricht über MQTT veröffentlichen
