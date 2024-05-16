@@ -1,6 +1,6 @@
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD
-from mqtt import MQTTClient
+from umqtt.simple import MQTTClient
 from umqtt.simple import MQTTClient
 import ubluetooth as bluetooth
 import time
