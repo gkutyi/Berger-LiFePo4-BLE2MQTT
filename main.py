@@ -36,7 +36,7 @@ mqtt_client = None
 # Callback-Funktion für das BLE-Scanergebnis
 def scan_callback(event, data):
     print('BLE-Scan')
-    print("Event:", event.decode(), "with data:", data.decode())
+    print("Event:", event, "with data:", data.decode())
     if event == 1: # EVT_GAP_SCAN_RESULT
         # Parse the data to extract information about the scanned device
         _, addr_type, addr, _, _, adv_data = data
