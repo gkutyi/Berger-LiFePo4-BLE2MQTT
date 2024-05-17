@@ -73,7 +73,7 @@ def mqtt_callback(topic, msg):
         if perform_ota_update():
             # Sende Wert über MQTT
             publish_to_mqtt(ota_topic, 'done')
-        else publish_to_mqtt(ota_topic, 'failure')    
+        else: publish_to_mqtt(ota_topic, 'failure')    
     
 # Verbindung zu MQTT-Broker herstellen
 def connect_mqtt():
@@ -104,7 +104,7 @@ def perform_ota_update():
     ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
     if ota_updater.download_and_install_update_if_available():
         return True
-    else return False
+    else: return False
 
 # BLE-Scan starten
 def start_ble_scan():
