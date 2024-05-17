@@ -90,13 +90,24 @@ def publish_to_mqtt(topic, value):
         connect_mqtt()
     mqtt_client.publish(topic, str(value))
 
-# Funktion zum Prüfen und Ausführen des OTA-Updates
+# Auf MQTT-Nachrichten prüfen
 def check_mqtt_messages():
     # Über MQTT prüfen, ob ein OTA-Update erforderlich ist
     mqtt_client.subscribe(ota_topic)
     while True:
-        mqtt_client.check_msg()  # Check for incoming message
-        time.sleep(1)  # Wait a short time
+        try:
+            mqtt_client.check_msg()  # Check for incoming message
+        except Exception as e:
+            print(f"Error checking messages: {e}")
+            reconnect_mqtt()
+
+def reconnect_mqtt():
+    connected = False
+    while not connected:
+        connected = connect_mqtt()
+        if not connected:
+            print("Retrying MQTT connection in 5 seconds...")
+            time.sleep(5)  # Wait a short time
 
 # OTA-Update durchführen
 def perform_ota_update():
