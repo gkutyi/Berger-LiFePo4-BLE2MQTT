@@ -86,8 +86,6 @@ def connect_mqtt():
 # Nachricht über MQTT veröffentlichen
 def publish_to_mqtt(topic, value):
     global mqtt_client
-    if mqtt_client is None or not mqtt_client.isconnected():
-        connect_mqtt()
     mqtt_client.publish(topic, str(value))
 
 # Auf MQTT-Nachrichten prüfen
