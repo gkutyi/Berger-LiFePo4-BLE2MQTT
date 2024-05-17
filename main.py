@@ -102,7 +102,7 @@ def check_mqtt_messages():
         try:
             mqtt_client.check_msg()  # Check for incoming message
         except Exception as e:
-            print(f"Error checking messages: {e}")
+            print(f"Error checking messages: {e]")
             reconnect_mqtt()
 
 def reconnect_mqtt():
