@@ -36,6 +36,7 @@ mqtt_client = None
 # Callback-Funktion für das BLE-Scanergebnis
 def scan_callback(event, data):
     print('BLE-Scan')
+    print("Event:", event.decode(), "with data:", data.decode())
     if event == 1: # EVT_GAP_SCAN_RESULT
         # Parse the data to extract information about the scanned device
         _, addr_type, addr, _, _, adv_data = data
@@ -72,7 +73,7 @@ def mqtt_callback(topic, msg):
         # Hier können Sie das OTA-Update durchführen
         if perform_ota_update():
             # Sende Wert über MQTT
-            publish_to_mqtt(ota_topic, 'done')
+            publish_to_mqtt(ota_topic, 'success')
         else: publish_to_mqtt(ota_topic, 'failure')    
     
 # Verbindung zu MQTT-Broker herstellen
@@ -80,8 +81,13 @@ def connect_mqtt():
     global mqtt_client
     mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=mqtt_ssl)
     mqtt_client.set_callback(mqtt_callback)  # Set the callback function
-    mqtt_client.connect()
-    print('Connected to MQTT-Broker')
+    try:
+        mqtt_client.connect()
+        print('Connected to MQTT-Broker')
+        return True
+    except Exception as e:
+        print(f"Failed to connect to MQTT broker: {e]")
+        return False
 
 # Nachricht über MQTT veröffentlichen
 def publish_to_mqtt(topic, value):
