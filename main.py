@@ -70,7 +70,10 @@ def mqtt_callback(topic, msg):
     # Nachricht zum Starten des OTA-Updates empfangen
         print('OTA update message received.', msg.decode)
         # Hier können Sie das OTA-Update durchführen
-        perform_ota_update()
+        if perform_ota_update():
+            # Sende Wert über MQTT
+            publish_to_mqtt(ota_topic, 'done')
+        else publish_to_mqtt(ota_topic, 'failure')    
     
 # Verbindung zu MQTT-Broker herstellen
 def connect_mqtt():
@@ -88,7 +91,7 @@ def publish_to_mqtt(topic, value):
     mqtt_client.publish(topic, str(value))
 
 # Funktion zum Prüfen und Ausführen des OTA-Updates
-def check_ota_update():
+def check_mqtt_messages():
     # Über MQTT prüfen, ob ein OTA-Update erforderlich ist
     mqtt_client.subscribe(ota_topic)
     while True:
@@ -99,8 +102,9 @@ def check_ota_update():
 def perform_ota_update():
     firmware_url = "https://raw.githubusercontent.com/gkutyi/Berger-LiFePo4-BLE2MQTT/"
     ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
-    ota_updater.download_and_install_update_if_available()
-    pass
+    if ota_updater.download_and_install_update_if_available():
+        return True
+    else return False
 
 # BLE-Scan starten
 def start_ble_scan():
@@ -125,7 +129,7 @@ def main():
     connect_wifi()
     connect_mqtt()
     start_ble_scan()
-    check_ota_update()
+    check_mqtt_messages()
 
 if __name__ == '__main__':
     main()
