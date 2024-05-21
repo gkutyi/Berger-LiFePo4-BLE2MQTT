@@ -7,6 +7,15 @@ import time
 import network
 import machine
 import urequests
+import ussl
+import socket
+
+# SSL/TLS Parameters
+root_ca = "/flash/cert/ca.crt"  # Path to the root CA certificate
+
+# Load the CA certificate
+with open(root_ca, "r") as f:
+    ca_cert = f.read()
 
 # Define the UUID of the characteristic
 CHARACTERISTIC_UUID = '00001101-0000-1000-8000-00805F9B34FB'
@@ -80,8 +89,16 @@ def mqtt_callback(topic, msg):
     
 # Verbindung zu MQTT-Broker herstellen
 def connect_mqtt():
+    # Create an SSL context
+    ssl_params = {
+        'server_hostname': mqtt_broker,
+        'certfile': None,
+        'keyfile': None,
+        'cert_reqs': ussl.CERT_REQUIRED,
+        'cadata': ca_cert,
+    }
     global mqtt_client
-    mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=mqtt_ssl)
+    mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=mqtt_ssl, ssl_params=ssl_params)
     mqtt_client.set_callback(mqtt_callback)  # Set the callback function
     try:
         mqtt_client.connect()
