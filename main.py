@@ -143,12 +143,12 @@ def connect_to_wifi(ssid, password):
     wlan.active(True)
     wlan.disconnect()  # Ensure we start with a clean state
     
-    attempts = 5  # Number of attempts to connect
+    attempts = 3  # Number of attempts to connect
     for attempt in range(attempts):
         try:
             wlan.connect(ssid, password)
             
-            timeout = 10  # Seconds to wait for connection
+            timeout = 2  # Seconds to wait for connection
             while not wlan.isconnected() and timeout > 0:
                 print(f'Attempting to connect to {ssid}... (Attempt {attempt + 1}/{attempts})')
                 time.sleep(1)
