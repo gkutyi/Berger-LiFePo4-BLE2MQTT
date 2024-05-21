@@ -130,7 +130,14 @@ def start_ble_scan():
     ble.irq(scan_callback) # Set the scan callback
 #    ble.gap_scan(1)  # Enable scanning     
 
-# Wi-Fi-Verbindung herstellen
+# Function to reset the WiFi interface
+def reset_wifi_interface():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(False)
+    time.sleep(1)
+    wlan.active(True)
+
+# Function to connect to a WiFi network
 def connect_to_wifi(ssid, password):
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
@@ -155,6 +162,10 @@ def connect_to_wifi(ssid, password):
         except OSError as e:
             print(f'Error on attempt {attempt + 1}: {e}')
             time.sleep(2)  # Wait before retrying
+        
+        # Reset WiFi interface before retrying
+        reset_wifi_interface()
+        time.sleep(2)  # Short delay to ensure reset is processed
     
     print(f'Failed to connect to {ssid} after {attempts} attempts')
     return False
