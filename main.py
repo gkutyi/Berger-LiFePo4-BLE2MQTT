@@ -131,35 +131,33 @@ def start_ble_scan():
 #    ble.gap_scan(1)  # Enable scanning     
 
 # Wi-Fi-Verbindung herstellen
-#def connect_wifi():
-#    sta_if = network.WLAN(network.STA_IF)
-#    if not sta_if.isconnected():
-#        print('Verbindung zum WLAN herstellen...')
-#        sta_if.active(True)
-#        sta_if.connect(wifi_ssid, wifi_password)
-#        while not sta_if.isconnected():
-#            pass
-#    print('Verbunden:', sta_if.ifconfig())
-
 def connect_to_wifi(ssid, password):
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
-    wlan.connect(ssid, password)
+    wlan.disconnect()  # Ensure we start with a clean state
     
-    # Wait for connection with timeout
-    timeout = 10
-    while not wlan.isconnected() and timeout > 0:
-        print(f'Connecting to {ssid}...')
-        time.sleep(1)
-        timeout -= 1
-        
-    if wlan.isconnected():
-        print(f'Connected to {ssid}')
-        print('network config:', wlan.ifconfig())
-    else:
-        print(f'Failed to connect to {ssid}')
+    attempts = 5  # Number of attempts to connect
+    for attempt in range(attempts):
+        try:
+            wlan.connect(ssid, password)
+            
+            timeout = 10  # Seconds to wait for connection
+            while not wlan.isconnected() and timeout > 0:
+                print(f'Attempting to connect to {ssid}... (Attempt {attempt + 1}/{attempts})')
+                time.sleep(1)
+                timeout -= 1
+            
+            if wlan.isconnected():
+                print(f'Connected to {ssid}')
+                print('Network config:', wlan.ifconfig())
+                return True
+            
+        except OSError as e:
+            print(f'Error on attempt {attempt + 1}: {e}')
+            time.sleep(2)  # Wait before retrying
     
-    return wlan.isconnected()
+    print(f'Failed to connect to {ssid} after {attempts} attempts')
+    return False
 
 
 # Hauptfunktion
