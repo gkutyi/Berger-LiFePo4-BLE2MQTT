@@ -1,5 +1,5 @@
 from ota import OTAUpdater
-from WIFI_CONFIG import SSID, PASSWORD
+from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 from umqtt.simple import MQTTClient
 import ubluetooth as bluetooth
@@ -29,6 +29,8 @@ mqtt_ssl = MQTT_SSL
 # Wi-Fi-Verbindungsdetails
 wifi_ssid = SSID
 wifi_password = PASSWORD
+wifi_ssid_test = SSID_TEST
+wifi_password_test = PASSWORD_TEST
 
 # MQTT-Client-Instanz erstellen
 mqtt_client = None
@@ -129,19 +131,43 @@ def start_ble_scan():
 #    ble.gap_scan(1)  # Enable scanning     
 
 # Wi-Fi-Verbindung herstellen
-def connect_wifi():
-    sta_if = network.WLAN(network.STA_IF)
-    if not sta_if.isconnected():
-        print('Verbindung zum WLAN herstellen...')
-        sta_if.active(True)
-        sta_if.connect(wifi_ssid, wifi_password)
-        while not sta_if.isconnected():
-            pass
-    print('Verbunden:', sta_if.ifconfig())
+#def connect_wifi():
+#    sta_if = network.WLAN(network.STA_IF)
+#    if not sta_if.isconnected():
+#        print('Verbindung zum WLAN herstellen...')
+#        sta_if.active(True)
+#        sta_if.connect(wifi_ssid, wifi_password)
+#        while not sta_if.isconnected():
+#            pass
+#    print('Verbunden:', sta_if.ifconfig())
+
+def connect_to_wifi(ssid, password):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(ssid, password)
+    
+    # Wait for connection with timeout
+    timeout = 10
+    while not wlan.isconnected() and timeout > 0:
+        print(f'Connecting to {ssid}...')
+        time.sleep(1)
+        timeout -= 1
+        
+    if wlan.isconnected():
+        print(f'Connected to {ssid}')
+        print('network config:', wlan.ifconfig())
+    else:
+        print(f'Failed to connect to {ssid}')
+    
+    return wlan.isconnected()
+
 
 # Hauptfunktion
 def main():
-    connect_wifi()
+    # Try to connect to the primary WiFi network
+    if not connect_to_wifi(wifi_ssid, wifi_password):
+        # If the primary connection fails, try the secondary WiFi network
+        connect_to_wifi(wifi_ssid_test, wifi_password_test)
     connect_mqtt()
     start_ble_scan()
     check_mqtt_messages()
