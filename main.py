@@ -11,7 +11,7 @@ import ussl
 import socket
 
 # SSL/TLS Parameters
-root_ca = "/flash/cert/ca.crt"  # Path to the root CA certificate
+root_ca = "/flash/ssl/fullchain.pem"  # Path to the root CA certificate
 
 # Load the CA certificate
 with open(root_ca, "r") as f:
