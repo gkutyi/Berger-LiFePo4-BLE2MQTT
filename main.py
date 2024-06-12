@@ -57,9 +57,9 @@ def scan_callback(event, data):
     if event == 5: # EVT_GAP_SCAN_RESULT
         # Parse the data to extract information about the scanned device
         addr_type, addr, adv_type, rssi, adv_data = data
-        print("Found device with address:", addr)
+        print("Found device with address:", bytes(addr))
         print("Address type:", addr_type)
-        print("Advertisement data:", adv_data)
+        print("Advertisement data:", bytes(adv_data))
         print("RSSI:", rssi)
         print("Advertisment type:", adv_type)
     if event == 3: # EVENT_ADV_IND
