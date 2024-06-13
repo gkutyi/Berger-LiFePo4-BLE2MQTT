@@ -202,10 +202,11 @@ def main():
     if not connect_to_wifi(wifi_ssid, wifi_password):
         # If the primary connection fails, try the secondary WiFi network
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
-#. connect_mqtt()
+    perform_ota_update()
+#. Connect_mqtt()
     start_ble_scan()
 #. check_mqtt_messages()
-    perform_ota_update()
+
 
 if __name__ == '__main__':
     main()
