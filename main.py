@@ -58,7 +58,7 @@ _TEMP_UUID = bluetooth.UUID(0x2A6E)
 _ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
 
 
-class BLETemperatureCentral:
+class BLEBergerBATT:
     def __init__(self, ble):
         self._ble = ble
         self._ble.active(True)
@@ -275,8 +275,15 @@ def perform_ota_update():
     else: return False
 
 def demo():
+    # Try to connect to the primary WiFi network
+    if not connect_to_wifi(wifi_ssid, wifi_password):
+        # If the primary connection fails, try the secondary WiFi network
+        connect_to_wifi(wifi_ssid_test, wifi_password_test)
+        
+    perform_ota_update()
+    
     ble = bluetooth.BLE()
-    central = BLETemperatureCentral(ble)
+    central = BLEBergerBATT(ble)
 
     not_found = False
 
@@ -289,11 +296,6 @@ def demo():
             not_found = True
             print("No sensor found.")
 
-    # Try to connect to the primary WiFi network
-    if not connect_to_wifi(wifi_ssid, wifi_password):
-        # If the primary connection fails, try the secondary WiFi network
-        connect_to_wifi(wifi_ssid_test, wifi_password_test)    
-    perform_ota_update()
     central.scan(callback=on_scan)
 
     # Wait for connection...
