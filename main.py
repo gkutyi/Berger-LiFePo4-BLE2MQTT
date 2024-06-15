@@ -51,6 +51,46 @@ def perform_ota_update():
         return True
     else: return False
 
+# Function to reset the WiFi interface
+def reset_wifi_interface():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(False)
+    time.sleep(1)
+    wlan.active(True)
+
+# Function to connect to a WiFi network
+def connect_to_wifi(ssid, password):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.disconnect()  # Ensure we start with a clean state
+    
+    attempts = 3  # Number of attempts to connect
+    for attempt in range(attempts):
+        try:
+            wlan.connect(ssid, password)
+            
+            timeout = 2  # Seconds to wait for connection
+            while not wlan.isconnected() and timeout > 0:
+                print(f'Attempting to connect to {ssid}... (Attempt {attempt + 1}/{attempts})')
+                time.sleep(1)
+                timeout -= 1
+            
+            if wlan.isconnected():
+                print(f'Connected to {ssid}')
+                print('Network config:', wlan.ifconfig())
+                return True
+            
+        except OSError as e:
+            print(f'Error on attempt {attempt + 1}: {e}')
+            time.sleep(2)  # Wait before retrying
+        
+        # Reset WiFi interface before retrying
+        reset_wifi_interface()
+        time.sleep(2)  # Short delay to ensure reset is processed
+    
+    print(f'Failed to connect to {ssid} after {attempts} attempts')
+    return False
+    
 # Helper to decode the temperature characteristic encoding (sint16, hundredths of a degree).
 def _decode_temperature(data):
     return struct.unpack("<h", data)[0] / 100
