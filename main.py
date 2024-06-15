@@ -32,6 +32,12 @@ import aioble
 import random
 import struct
 
+# Wi-Fi-Verbindungsdetails
+wifi_ssid = SSID
+wifi_password = PASSWORD
+wifi_ssid_test = SSID_TEST
+wifi_password_test = PASSWORD_TEST
+
 # org.bluetooth.service.environmental_sensing
 _ENV_SENSE_UUID = bluetooth.UUID(0x181A)
 # org.bluetooth.characteristic.temperature
