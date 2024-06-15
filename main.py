@@ -9,315 +9,85 @@
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 import ubluetooth as bluetooth
-import time
-import network
-import machine
-import urequests
-import ussl
-import socket
-import random
-import struct
-import micropython
+#import time
+#import machine
+#import urequests
+#import ussl
+#import socket
+#import random
+#import struct
+#import micropython
 
-from ble_advertising import decode_services, decode_name
+import sys
+
+# ruff: noqa: E402
+sys.path.append("")
 
 from micropython import const
 
-_IRQ_CENTRAL_CONNECT = const(1)
-_IRQ_CENTRAL_DISCONNECT = const(2)
-_IRQ_GATTS_WRITE = const(3)
-_IRQ_GATTS_READ_REQUEST = const(4)
-_IRQ_SCAN_RESULT = const(5)
-_IRQ_SCAN_DONE = const(6)
-_IRQ_PERIPHERAL_CONNECT = const(7)
-_IRQ_PERIPHERAL_DISCONNECT = const(8)
-_IRQ_GATTC_SERVICE_RESULT = const(9)
-_IRQ_GATTC_SERVICE_DONE = const(10)
-_IRQ_GATTC_CHARACTERISTIC_RESULT = const(11)
-_IRQ_GATTC_CHARACTERISTIC_DONE = const(12)
-_IRQ_GATTC_DESCRIPTOR_RESULT = const(13)
-_IRQ_GATTC_DESCRIPTOR_DONE = const(14)
-_IRQ_GATTC_READ_RESULT = const(15)
-_IRQ_GATTC_READ_DONE = const(16)
-_IRQ_GATTC_WRITE_DONE = const(17)
-_IRQ_GATTC_NOTIFY = const(18)
-_IRQ_GATTC_INDICATE = const(19)
+import asyncio
+import aioble
+#import bluetooth
 
-_ADV_IND = const(0x00)
-_ADV_DIRECT_IND = const(0x01)
-_ADV_SCAN_IND = const(0x02)
-_ADV_NONCONN_IND = const(0x03)
+import random
+import struct
 
 # org.bluetooth.service.environmental_sensing
 _ENV_SENSE_UUID = bluetooth.UUID(0x181A)
 # org.bluetooth.characteristic.temperature
-_TEMP_UUID = bluetooth.UUID(0x2A6E)
+_ENV_SENSE_TEMP_UUID = bluetooth.UUID(0x2A6E)
 
 
-# org.bluetooth.characteristic.gap.appearance.xml
-_ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
+# Helper to decode the temperature characteristic encoding (sint16, hundredths of a degree).
+def _decode_temperature(data):
+    return struct.unpack("<h", data)[0] / 100
 
 
-class BLEBergerBATT:
-    def __init__(self, ble):
-        self._ble = ble
-        self._ble.active(True)
-        self._ble.irq(self._irq)
+async def find_temp_sensor():
+    # Scan for 5 seconds, in active mode, with very low interval/window (to
+    # maximise detection rate).
+    async with aioble.scan(5000, interval_us=30000, window_us=30000, active=True) as scanner:
+        async for result in scanner:
+            # See if it matches our name and the environmental sensing service.
+            if result.name() == "mpy-temp" and _ENV_SENSE_UUID in result.services():
+                return result.device
+    return None
 
-        self._reset()
 
-    def _reset(self):
-        # Cached name and address from a successful scan.
-        self._name = None
-        self._addr_type = None
-        self._addr = None
-
-        # Cached value (if we have one)
-        self._value = None
-
-        # Callbacks for completion of various operations.
-        # These reset back to None after being invoked.
-        self._scan_callback = None
-        self._conn_callback = None
-        self._read_callback = None
-
-        # Persistent callback for when new data is notified from the device.
-        self._notify_callback = None
-
-        # Connected device.
-        self._conn_handle = None
-        self._start_handle = None
-        self._end_handle = None
-        self._value_handle = None
-
-    def _irq(self, event, data):
-        if event == _IRQ_SCAN_RESULT:
-            addr_type, addr, adv_type, rssi, adv_data = data
-            if adv_type in (_ADV_IND, _ADV_DIRECT_IND) and _ENV_SENSE_UUID in decode_services(
-                adv_data
-            ):
-                # Found a potential device, remember it and stop scanning.
-                self._addr_type = addr_type
-                self._addr = bytes(
-                    addr
-                )  # Note: addr buffer is owned by caller so need to copy it.
-                self._name = decode_name(adv_data) or "?"
-                self._ble.gap_scan(None)
-
-        elif event == _IRQ_SCAN_DONE:
-            if self._scan_callback:
-                if self._addr:
-                    # Found a device during the scan (and the scan was explicitly stopped).
-                    self._scan_callback(self._addr_type, self._addr, self._name)
-                    self._scan_callback = None
-                else:
-                    # Scan timed out.
-                    self._scan_callback(None, None, None)
-
-        elif event == _IRQ_PERIPHERAL_CONNECT:
-            # Connect successful.
-            conn_handle, addr_type, addr = data
-            if addr_type == self._addr_type and addr == self._addr:
-                self._conn_handle = conn_handle
-                self._ble.gattc_discover_services(self._conn_handle)
-
-        elif event == _IRQ_PERIPHERAL_DISCONNECT:
-            # Disconnect (either initiated by us or the remote end).
-            conn_handle, _, _ = data
-            if conn_handle == self._conn_handle:
-                # If it was initiated by us, it'll already be reset.
-                self._reset()
-
-        elif event == _IRQ_GATTC_SERVICE_RESULT:
-            # Connected device returned a service.
-            conn_handle, start_handle, end_handle, uuid = data
-            if conn_handle == self._conn_handle and uuid == _ENV_SENSE_UUID:
-                self._start_handle, self._end_handle = start_handle, end_handle
-
-        elif event == _IRQ_GATTC_SERVICE_DONE:
-            # Service query complete.
-            if self._start_handle and self._end_handle:
-                self._ble.gattc_discover_characteristics(
-                    self._conn_handle, self._start_handle, self._end_handle
-                )
-            else:
-                print("Failed to find environmental sensing service.")
-
-        elif event == _IRQ_GATTC_CHARACTERISTIC_RESULT:
-            # Connected device returned a characteristic.
-            conn_handle, def_handle, value_handle, properties, uuid = data
-            if conn_handle == self._conn_handle and uuid == _TEMP_UUID:
-                self._value_handle = value_handle
-
-        elif event == _IRQ_GATTC_CHARACTERISTIC_DONE:
-            # Characteristic query complete.
-            if self._value_handle:
-                # We've finished connecting and discovering device, fire the connect callback.
-                if self._conn_callback:
-                    self._conn_callback()
-            else:
-                print("Failed to find temperature characteristic.")
-
-        elif event == _IRQ_GATTC_READ_RESULT:
-            # A read completed successfully.
-            conn_handle, value_handle, char_data = data
-            if conn_handle == self._conn_handle and value_handle == self._value_handle:
-                self._update_value(char_data)
-                if self._read_callback:
-                    self._read_callback(self._value)
-                    self._read_callback = None
-
-        elif event == _IRQ_GATTC_READ_DONE:
-            # Read completed (no-op).
-            conn_handle, value_handle, status = data
-
-        elif event == _IRQ_GATTC_NOTIFY:
-            # The ble_temperature.py demo periodically notifies its value.
-            conn_handle, value_handle, notify_data = data
-            if conn_handle == self._conn_handle and value_handle == self._value_handle:
-                self._update_value(notify_data)
-                if self._notify_callback:
-                    self._notify_callback(self._value)
-
-    # Returns true if we've successfully connected and discovered characteristics.
-    def is_connected(self):
-        return self._conn_handle is not None and self._value_handle is not None
-
-    # Find a device advertising the environmental sensor service.
-    def scan(self, callback=None):
-        self._addr_type = None
-        self._addr = None
-        self._scan_callback = callback
-        self._ble.gap_scan(2000, 30000, 30000)
-
-    # Connect to the specified device (otherwise use cached address from a scan).
-    def connect(self, addr_type=None, addr=None, callback=None):
-        self._addr_type = addr_type or self._addr_type
-        self._addr = addr or self._addr
-        self._conn_callback = callback
-        if self._addr_type is None or self._addr is None:
-            return False
-        self._ble.gap_connect(self._addr_type, self._addr)
-        return True
-
-    # Disconnect from current device.
-    def disconnect(self):
-        if self._conn_handle is None:
-            return
-        self._ble.gap_disconnect(self._conn_handle)
-        self._reset()
-
-    # Issues an (asynchronous) read, will invoke callback with data.
-    def read(self, callback):
-        if not self.is_connected():
-            return
-        self._read_callback = callback
-        self._ble.gattc_read(self._conn_handle, self._value_handle)
-
-    # Sets a callback to be invoked when the device notifies us.
-    def on_notify(self, callback):
-        self._notify_callback = callback
-
-    def _update_value(self, data):
-        # Data is sint16 in degrees Celsius with a resolution of 0.01 degrees Celsius.
-        self._value = struct.unpack("<h", data)[0] / 100
-        return self._value
-
-    def value(self):
-        return self._value
-
-# Function to reset the WiFi interface
-def reset_wifi_interface():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(False)
-    time.sleep(1)
-    wlan.active(True)
-
-# Function to connect to a WiFi network
-def connect_to_wifi(ssid, password):
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.disconnect()  # Ensure we start with a clean state
-    
-    attempts = 3  # Number of attempts to connect
-    for attempt in range(attempts):
-        try:
-            wlan.connect(ssid, password)
-            
-            timeout = 2  # Seconds to wait for connection
-            while not wlan.isconnected() and timeout > 0:
-                print(f'Attempting to connect to {ssid}... (Attempt {attempt + 1}/{attempts})')
-                time.sleep(1)
-                timeout -= 1
-            
-            if wlan.isconnected():
-                print(f'Connected to {ssid}')
-                print('Network config:', wlan.ifconfig())
-                return True
-            
-        except OSError as e:
-            print(f'Error on attempt {attempt + 1}: {e}')
-            time.sleep(2)  # Wait before retrying
-        
-        # Reset WiFi interface before retrying
-        reset_wifi_interface()
-        time.sleep(2)  # Short delay to ensure reset is processed
-    
-    print(f'Failed to connect to {ssid} after {attempts} attempts')
-    return False
-
-# OTA-Update durchführen
-def perform_ota_update():
-    firmware_url = "https://raw.githubusercontent.com/gkutyi/Berger-LiFePo4-BLE2MQTT/"
-    ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
-    if ota_updater.download_and_install_update_if_available():
-        return True
-    else: return False
-
-def demo():
-    # Try to connect to the primary WiFi network
+async def main():
+        # Try to connect to the primary WiFi network
     if not connect_to_wifi(wifi_ssid, wifi_password):
         # If the primary connection fails, try the secondary WiFi network
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
-        
+    
     perform_ota_update()
     
-    ble = bluetooth.BLE()
-    central = BLEBergerBATT(ble)
+    device = await find_temp_sensor()
+    if not device:
+        print("Temperature sensor not found")
+        return
 
-    not_found = False
+    try:
+        print("Connecting to", device)
+        connection = await device.connect()
+    except asyncio.TimeoutError:
+        print("Timeout during connection")
+        return
 
-    def on_scan(addr_type, addr, name):
-        if addr_type is not None:
-            print("Found sensor:", addr_type, addr, name)
-            central.connect()
-        else:
-            nonlocal not_found
-            not_found = True
-            print("No sensor found.")
-
-    central.scan(callback=on_scan)
-
-    # Wait for connection...
-    while not central.is_connected():
-        time.sleep_ms(100)
-        if not_found:
+    async with connection:
+        try:
+            temp_service = await connection.service(_ENV_SENSE_UUID)
+            temp_characteristic = await temp_service.characteristic(_ENV_SENSE_TEMP_UUID)
+        except asyncio.TimeoutError:
+            print("Timeout discovering services/characteristics")
             return
 
-    print("Connected")
-
-    # Explicitly issue reads, using "print" as the callback.
-    while central.is_connected():
-        central.read(callback=print)
-        time.sleep_ms(2000)
-
-    # Alternative to the above, just show the most recently notified value.
-    # while central.is_connected():
-    #     print(central.value())
-    #     time.sleep_ms(2000)
-
-    print("Disconnected")
+        while connection.is_connected():
+            temp_deg_c = _decode_temperature(await temp_characteristic.read())
+            print("Temperature: {:.2f}".format(temp_deg_c))
+            await asyncio.sleep_ms(1000)
 
 
-if __name__ == "__main__":
-    demo()
+asyncio.run(main())
+    
+    
