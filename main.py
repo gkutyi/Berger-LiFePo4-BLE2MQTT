@@ -38,10 +38,10 @@ wifi_password = PASSWORD
 wifi_ssid_test = SSID_TEST
 wifi_password_test = PASSWORD_TEST
 
-# org.bluetooth.service.environmental_sensing
-_ENV_SENSE_UUID = bluetooth.UUID(0x181A)
+# BT-Batt service-UUID
+_BTBATT_UUID = bluetooth.UUID(0xFFF6)
 # org.bluetooth.characteristic.temperature
-_ENV_SENSE_TEMP_UUID = bluetooth.UUID(0x2A6E)
+#_ENV_SENSE_TEMP_UUID = bluetooth.UUID(0x2A6E)
 
 # OTA-Update durchführen
 def perform_ota_update():
@@ -102,7 +102,7 @@ async def find_temp_sensor():
     async with aioble.scan(5000, interval_us=30000, window_us=30000, active=True) as scanner:
         async for result in scanner:
             # See if it matches our name and the environmental sensing service.
-            if result.name() == "mpy-temp" and _ENV_SENSE_UUID in result.services():
+            if result.name() == "BT-Battery" and _BTBATT_UUID in result.services():
                 return result.device
     return None
 
@@ -129,8 +129,8 @@ async def main():
 
     async with connection:
         try:
-            temp_service = await connection.service(_ENV_SENSE_UUID)
-            temp_characteristic = await temp_service.characteristic(_ENV_SENSE_TEMP_UUID)
+            temp_service = await connection.service(_BTBATT_UUID)
+            #temp_characteristic = await temp_service.characteristic(_ENV_SENSE_TEMP_UUID)
         except asyncio.TimeoutError:
             print("Timeout discovering services/characteristics")
             return
