@@ -43,6 +43,13 @@ _ENV_SENSE_UUID = bluetooth.UUID(0x181A)
 # org.bluetooth.characteristic.temperature
 _ENV_SENSE_TEMP_UUID = bluetooth.UUID(0x2A6E)
 
+# OTA-Update durchführen
+def perform_ota_update():
+    firmware_url = "https://raw.githubusercontent.com/gkutyi/Berger-LiFePo4-BLE2MQTT/"
+    ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
+    if ota_updater.download_and_install_update_if_available():
+        return True
+    else: return False
 
 # Helper to decode the temperature characteristic encoding (sint16, hundredths of a degree).
 def _decode_temperature(data):
