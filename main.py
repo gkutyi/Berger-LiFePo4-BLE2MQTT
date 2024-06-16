@@ -9,7 +9,8 @@
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 import ubluetooth as bluetooth
-#import time
+import time
+import network
 import machine
 #import urequests
 #import ussl
