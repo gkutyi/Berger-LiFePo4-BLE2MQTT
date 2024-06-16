@@ -26,7 +26,7 @@ sys.path.append("")
 from micropython import const
 
 import asyncio
-import centrale
+import central
 #import bluetooth
 
 import random
