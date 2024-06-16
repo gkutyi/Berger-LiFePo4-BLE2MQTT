@@ -100,7 +100,7 @@ def _decode_temperature(data):
 async def find_temp_sensor():
     # Scan for 5 seconds, in active mode, with very low interval/window (to
     # maximise detection rate).
-    async with aioble.scan(5000, interval_us=30000, window_us=30000, active=True) as scanner:
+    async with central.scan(5000, interval_us=30000, window_us=30000, active=True) as scanner:
         async for result in scanner:
             # See if it matches our name and the environmental sensing service.
             if result.name() == "BT-Battery" and _BTBATT_UUID in result.services():
