@@ -102,8 +102,10 @@ async def find_temp_sensor():
     # maximise detection rate).
     async with central.scan(5000, interval_us=30000, window_us=30000, active=True) as scanner:
         async for result in scanner:
-            print(result, result.name(), result.rssi, bluetooth.UUID(result.services()))
+            print(result, result.name(), result.rssi, result.services())
             # See if it matches our name and the environmental sensing service.
+            for service in result.services():
+                print(service)
             if result.name() == "BT-Battery" and _BTBATT_UUID in result.services():
                 return result.device
     return None
