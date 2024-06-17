@@ -40,7 +40,7 @@ wifi_ssid_test = SSID_TEST
 wifi_password_test = PASSWORD_TEST
 
 # BT-Batt service-UUID
-_BTBATT_UUID = bluetooth.UUID(0xFFF6)
+_BTBATT_UUID = bluetooth.UUID(0xFFF0)
 # org.bluetooth.characteristic.temperature
 #_ENV_SENSE_TEMP_UUID = bluetooth.UUID(0x2A6E)
 
