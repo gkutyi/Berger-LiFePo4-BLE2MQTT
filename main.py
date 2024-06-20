@@ -145,6 +145,7 @@ async def main():
             return
         while True:
             data = await batt_char.notified()
+            print(bytes(data))
         #while connection.is_connected():
             #temp_deg_c = _decode_temperature(await temp_characteristic.read())
             #print("Temperature: {:.2f}".format(temp_deg_c))
