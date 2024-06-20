@@ -42,7 +42,7 @@ wifi_password_test = PASSWORD_TEST
 # BT-Batt service-UUID
 _BTBATT_UUID = bluetooth.UUID(0xFFF0)
 # org.bluetooth.characteristic.temperature
-#_ENV_SENSE_TEMP_UUID = bluetooth.UUID(0x2A6E)
+_ENV_SENSE_BATT_UUID = bluetooth.UUID(0xfff6)
 
 # OTA-Update durchführen
 def perform_ota_update():
@@ -107,7 +107,8 @@ async def find_temp_sensor():
             # See if it matches our name and the environmental sensing service.
             for service in result.services():
                 print(service)
-            if result.name() == "BT-Battery" and _BTBATT_UUID in result.services():
+            #if result.name() == "BT-Battery" and 
+            if _BTBATT_UUID in result.services():
                 return result.device
     return None
 
@@ -134,16 +135,20 @@ async def main():
 
     async with connection:
         try:
-            temp_service = await connection.service(_BTBATT_UUID)
+            batt_service = await connection.service(_BTBATT_UUID)
             #temp_characteristic = await temp_service.characteristic(_ENV_SENSE_TEMP_UUID)
+            batt_char = await batt_service.characteristic(_ENV_SENSE_BATT_UUID)
+            # Subscribe for notification.
+            await batt_char.subscribe(notify=True)
         except asyncio.TimeoutError:
             print("Timeout discovering services/characteristics")
             return
-
-        while connection.is_connected():
-            temp_deg_c = _decode_temperature(await temp_characteristic.read())
-            print("Temperature: {:.2f}".format(temp_deg_c))
-            await asyncio.sleep_ms(1000)
+        while True:
+            data = await batt_char.notified()
+        #while connection.is_connected():
+            #temp_deg_c = _decode_temperature(await temp_characteristic.read())
+            #print("Temperature: {:.2f}".format(temp_deg_c))
+            #await asyncio.sleep_ms(1000)
 
 
 asyncio.run(main())
