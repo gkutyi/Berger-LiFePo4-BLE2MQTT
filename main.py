@@ -149,7 +149,7 @@ async def main():
         #while connection.is_connected():
             #temp_deg_c = _decode_temperature(await temp_characteristic.read())
             #print("Temperature: {:.2f}".format(temp_deg_c))
-            #await asyncio.sleep_ms(1000)
+            await asyncio.sleep_ms(1000)
 
 
 asyncio.run(main())
