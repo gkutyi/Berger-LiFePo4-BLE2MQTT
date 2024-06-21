@@ -111,7 +111,15 @@ async def find_temp_sensor():
             if _BTBATT_UUID in result.services():
                 return result.device
     return None
-
+    
+async def notification_handler(batt_char):
+    """
+    This function will be called whenever new data is received from the BLE device.
+    :param characteristic: The characteristic from which the notification was received.
+    """
+    while True:
+        data = await batt_char.notified()
+        print(f"Notification: {data}")
 
 async def main():
         # Try to connect to the primary WiFi network
@@ -140,12 +148,11 @@ async def main():
             batt_char = await batt_service.characteristic(_ENV_SENSE_BATT_UUID)
             # Subscribe for notification.
             await batt_char.subscribe(notify=True)
+            await notification_handler(batt_char)
         except asyncio.TimeoutError:
             print("Timeout discovering services/characteristics")
             return
         while True:
-            data = await batt_char.notified()
-            print(data)
         #while connection.is_connected():
             #temp_deg_c = _decode_temperature(await temp_characteristic.read())
             #print("Temperature: {:.2f}".format(temp_deg_c))
