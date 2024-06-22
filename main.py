@@ -119,8 +119,8 @@ async def notification_handler(batt_char):
     """
     while True:
         data = await batt_char.notified()
+        hex_data = data.hex()
         if data and data[0] == 0x7e:
-            hex_data = data.hex()
             print(f"Notification_7E: {hex_data}")
         print("Notification: {hex_data}")
 async def main():
