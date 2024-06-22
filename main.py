@@ -151,7 +151,7 @@ async def main():
             batt_char = await batt_service.characteristic(_ENV_SENSE_BATT_UUID)
             # Subscribe for notification.
             await batt_char.subscribe(notify=True)
-            await notification_handler(batt_char)
+            #await notification_handler(batt_char)
         except asyncio.TimeoutError:
             print("Timeout discovering services/characteristics")
             return
