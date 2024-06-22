@@ -119,7 +119,8 @@ async def notification_handler(batt_char):
     """
     while True:
         data = await batt_char.notified()
-        print(f"Notification: {data}")
+        hex_data = data.hex()
+        print(f"Notification: {hex_data}")
 
 async def main():
         # Try to connect to the primary WiFi network
