@@ -122,7 +122,7 @@ async def notification_handler(batt_char):
         hex_data = data.hex()
         if data and data[0] == 0x7e:
             print(f"Notification_7E: {hex_data}")
-        print("Notification: {hex_data}")
+        print(f"Notification: {hex_data}")
 async def main():
         # Try to connect to the primary WiFi network
     if not connect_to_wifi(wifi_ssid, wifi_password):
