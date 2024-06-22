@@ -120,10 +120,10 @@ async def notification_handler(batt_char):
     while True:
         data = await batt_char.notified()
         hex_data = data.hex()
-        print(data[0])
-        if data and data[0] == 0x7e:
+        if data and data[0] == 0x3A:
             print(f"Notification_7E: {hex_data}")
         print(f"Notification: {hex_data}")
+
 async def main():
         # Try to connect to the primary WiFi network
     if not connect_to_wifi(wifi_ssid, wifi_password):
@@ -160,6 +160,7 @@ async def main():
         #while connection.is_connected():
             #temp_deg_c = _decode_temperature(await temp_characteristic.read())
             #print("Temperature: {:.2f}".format(temp_deg_c))
+            print("sleep")
             await asyncio.sleep_ms(1000)
 
 
