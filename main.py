@@ -117,10 +117,11 @@ async def notification_handler(batt_char):
     This function will be called whenever new data is received from the BLE device.
     :param characteristic: The characteristic from which the notification was received.
     """
+    print("notification_handler")
     while True:
         data = await batt_char.notified()
         hex_data = data.hex()
-        if data and data[0] == 0x3A:
+        if data and hex_data[0] == 0x3A:
             print(f"Notification_7E: {hex_data}")
         print(f"Notification: {hex_data}")
 
