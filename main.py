@@ -96,10 +96,6 @@ def connect_to_wifi(ssid, password):
 def _decode_temperature(data):
     return struct.unpack("<h", data)[0] / 100
 
-def print_hex(data):
-    hex_string = ''.join('{:02x}'.format(byte) for byte in data)
-    print(hex_string)
-
 async def find_temp_sensor():
     # Scan for 5 seconds, in active mode, with very low interval/window (to
     # maximise detection rate).
@@ -125,11 +121,10 @@ async def notification_handler(batt_char):
         data = await batt_char.notified()
         hex_data = data.hex()
         print(hex_data[0])
+        print(hex_data[1])
         if hex_data[0] == 0x3A:
             print(f"Notification_7E: {hex_data}")
         print(f"Notification: {hex_data}")
-        print_hex(data)
-        print_hex(hex_data)
 
 async def main():
         # Try to connect to the primary WiFi network
