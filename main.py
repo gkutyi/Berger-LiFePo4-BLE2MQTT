@@ -153,6 +153,7 @@ async def main():
             # Subscribe for notification.
             await batt_char.subscribe(notify=True)
             await notification_handler(batt_char)
+            print("return from notification handler")
             return
         except asyncio.TimeoutError:
             print("Timeout discovering services/characteristics")
