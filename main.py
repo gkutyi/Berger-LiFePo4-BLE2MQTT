@@ -122,7 +122,8 @@ async def notification_handler(batt_char):
         hex_data = data.hex()
         print(hex_data[0])
         print(hex_data[1])
-        if hex_data[0] == 0x3A:
+        print(data[0])
+        if data[0] == ":":
             print(f"Notification_7E: {hex_data}")
         print(f"Notification: {hex_data}")
 
