@@ -123,8 +123,8 @@ async def notification_handler(batt_char):
         print(hex_data[0])
         print(hex_data[1])
         print(data[0])
-        if data[0] == ":":
-            print(f"Notification_7E: {hex_data}")
+        if data[0] == 58:
+            print(f"Notification_3A: {hex_data}")
         print(f"Notification: {hex_data}")
 
 async def main():
