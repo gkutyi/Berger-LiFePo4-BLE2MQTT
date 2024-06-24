@@ -42,7 +42,7 @@ wifi_password_test = PASSWORD_TEST
 # BT-Batt service-UUID
 _BTBATT_UUID = bluetooth.UUID(0xFFF0)
 # org.bluetooth.characteristic.temperature
-_ENV_SENSE_BATT_UUID = bluetooth.UUID(0xfff3)
+_ENV_SENSE_BATT_UUID = bluetooth.UUID(0xfff6)
 
 # OTA-Update durchführen
 def perform_ota_update():
@@ -156,7 +156,6 @@ async def main():
             await batt_char.subscribe(notify=True)
             await notification_handler(batt_char)
             print("return from notification handler")
-            return
         except asyncio.TimeoutError:
             print("Timeout discovering services/characteristics")
             return
