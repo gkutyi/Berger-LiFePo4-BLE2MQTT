@@ -154,7 +154,7 @@ async def main():
             batt_char = await batt_service.characteristic(_ENV_SENSE_BATT_UUID)
             # Subscribe for notification.
             await batt_char.subscribe(notify=True)
-            await notification_handler(batt_char)
+            #await notification_handler(batt_char)
             print("return from notification handler")
         except asyncio.TimeoutError:
             print("Timeout discovering services/characteristics")
@@ -163,6 +163,7 @@ async def main():
         #while connection.is_connected():
             #temp_deg_c = _decode_temperature(await temp_characteristic.read())
             #print("Temperature: {:.2f}".format(temp_deg_c))
+            await notification_handler(batt_char)
             print("sleep")
             await asyncio.sleep_ms(1000)
 
