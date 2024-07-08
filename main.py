@@ -33,6 +33,45 @@ def perform_ota_update():
         return True
     else: return False
     
+# Callback-Funktion für das BLE-Scanergebnis
+def scan_callback(event, data):
+    print('BLE-Scan')
+    print("Event:", event, "with data:", data)
+    if event == 1: # EVT_GAP_SCAN_RESULT
+        # Parse the data to extract information about the scanned device
+        _, addr_type, addr, _, _, adv_data = data
+        print("Found device with address:", addr)
+        print("Address type:", addr_type)
+        print("Advertisement data:", adv_data)
+    if event == 5: # EVT_GAP_SCAN_RESULT
+        # Parse the data to extract information about the scanned device
+        addr_type, addr, adv_type, rssi, adv_data = data
+        print("Found device with address:", bytes(addr))
+        print("Address type:", addr_type)
+        print("Advertisement data:", bytes(adv_data))
+        print("RSSI:", rssi)
+        print("Advertisment type:", adv_type)
+    if event == 3: # EVENT_ADV_IND
+        addr_type, addr, adv_type, rssi, adv_data = data
+        if addr == ble_address:
+            # Verbindung herstellen
+            ble_connection = bluetooth.BLE()
+            ble_connection.active(True)
+            peripheral = ble_connection.connect(addr)
+
+            # Dienst und Charakteristik für Nachrichtenlesen
+            services = peripheral.services()
+            for service in services:
+                characteristics = service.characteristics()
+                for char in characteristics:
+                    if char.uuid() == 'UUID_der_Charakteristik':
+                        while True:
+                            value = char.read()
+                            # Hier können Sie die empfangenen Werte verarbeiten
+                            print('Received value:', value)
+                            # Sende Wert über MQTT
+                            publish_to_mqtt(value)
+                            
 # Callback Function for Incoming MQTT Messages
 def mqtt_callback(topic, msg):
     print("Received message on topic:", topic.decode(), "with message:", msg.decode())
@@ -44,6 +83,13 @@ def mqtt_callback(topic, msg):
             # Sende Wert über MQTT
             publish_to_mqtt(ota_topic, 'success')
         else: publish_to_mqtt(ota_topic, 'failure')
+
+# BLE-Scan starten
+def start_ble_scan():
+    ble.active(True)
+    ble.gap_scan(0)  # Start scanning, 0 means continuous scanning
+    ble.irq(scan_callback) # Set the scan callback
+#    ble.gap_scan(1)  # Enable scanning     
 
 # Connect to MQTT Broker with SSL
 def connect_mqtt():
@@ -133,6 +179,7 @@ def main():
     sync_time()  # Synchronize time before connecting to MQTT
     if connect_mqtt():
         check_mqtt_messages()
+    start_ble_scan()
 
 if __name__ == '__main__':
     main()
