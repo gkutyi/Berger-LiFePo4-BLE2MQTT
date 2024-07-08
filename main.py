@@ -2,6 +2,7 @@ from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 from umqtt.simple import MQTTClient
+import ubluetooth as bluetooth
 import network
 import usocket
 import ussl
