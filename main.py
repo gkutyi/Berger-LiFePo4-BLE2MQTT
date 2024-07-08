@@ -8,7 +8,7 @@ import usocket
 import ussl
 import time
 import ntptime  # Import NTP module
-
+import gc
 
 # Define the UUID of the characteristic
 CHARACTERISTIC_UUID = '00001101-0000-1000-8000-00805F9B34FB'
@@ -89,13 +89,14 @@ def mqtt_callback(topic, msg):
         # Hier können Sie das OTA-Update durchführen
         if perform_ota_update():
             # Sende Wert über MQTT
+            gc.collect()
             publish_to_mqtt(ota_topic, 'success')
         else: publish_to_mqtt(ota_topic, 'failure')
 
 # BLE-Scan starten
 def start_ble_scan():
     ble.active(True)
-    ble.gap_scan(0)  # Start scanning, 0 means continuous scanning
+    ble.gap_scan(10000)  # Start scanning, 0 means continuous scanning
     ble.irq(scan_callback) # Set the scan callback
 #    ble.gap_scan(1)  # Enable scanning     
 
@@ -133,17 +134,24 @@ def check_mqtt_messages():
     while True:
         try:
             mqtt_client.wait_msg()
+            gc.collect()  # Collect garbage to free up memory
         except Exception as e:
             print(f"Error checking messages: {e}")
             reconnect_mqtt()
+            gc.collect()  # Collect garbage to free up memory
 
 def reconnect_mqtt():
     connected = False
-    while not connected:
+    attempts = 0
+    max_attempts = 5  # Limit the number of reconnection attempts
+    while not connected and attempts < max_attempts:
         connected = connect_mqtt()
         if not connected:
-            print("Retrying MQTT connection in 5 seconds...")
+            attempts += 1
+            print(f"Retrying MQTT connection in 5 seconds... (Attempt {attempts}/{max_attempts})")
             time.sleep(5)  # Wait a short time
+    if not connected:
+        print("Max MQTT reconnection attempts reached. Giving up.")
 
 # Connect to WiFi
 def connect_to_wifi(ssid, password):
