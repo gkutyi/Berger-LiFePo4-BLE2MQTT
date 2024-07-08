@@ -1,3 +1,4 @@
+from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 from umqtt.simple import MQTTClient
@@ -12,6 +13,8 @@ CA_CRT_PATH = "/ssl/ca.crt"  # Path to the root CA certificate
 
 # MQTT Connection Details
 CLIENT_ID = 'ESP32WoMoClient'
+mqtt_topic = MQTT_TOPIC
+ota_topic = MQTT_OTA_UPDATE
 
 # Wi-Fi Connection Details
 wifi_ssid = SSID
@@ -22,9 +25,25 @@ wifi_password_test = PASSWORD_TEST
 # MQTT Client Instance
 mqtt_client = None
 
+# OTA-Update durchführen
+def perform_ota_update():
+    firmware_url = "https://raw.githubusercontent.com/gkutyi/Berger-LiFePo4-BLE2MQTT/"
+    ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
+    if ota_updater.download_and_install_update_if_available():
+        return True
+    else: return False
+    
 # Callback Function for Incoming MQTT Messages
 def mqtt_callback(topic, msg):
     print("Received message on topic:", topic.decode(), "with message:", msg.decode())
+    if msg.decode() == 'now' and topic.decode() == ota_topic:
+    # Nachricht zum Starten des OTA-Updates empfangen
+        print('OTA update message received.', msg.decode)
+        # Hier können Sie das OTA-Update durchführen
+        if perform_ota_update():
+            # Sende Wert über MQTT
+            publish_to_mqtt(ota_topic, 'success')
+        else: publish_to_mqtt(ota_topic, 'failure')
 
 # Connect to MQTT Broker with SSL
 def connect_mqtt():
@@ -109,12 +128,11 @@ def sync_time():
 
 # Main Function
 def main():
-    sync_time()  # Synchronize time before connecting to MQTT
     if not connect_to_wifi(wifi_ssid, wifi_password):
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
+    sync_time()  # Synchronize time before connecting to MQTT
     if connect_mqtt():
         check_mqtt_messages()
-    start_ble_scan()
-    
+
 if __name__ == '__main__':
     main()
