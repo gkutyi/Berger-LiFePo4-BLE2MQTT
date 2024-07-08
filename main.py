@@ -8,6 +8,13 @@ import ussl
 import time
 import ntptime  # Import NTP module
 
+
+# Define the UUID of the characteristic
+CHARACTERISTIC_UUID = '00001101-0000-1000-8000-00805F9B34FB'
+
+# Create a BLE object
+ble = bluetooth.BLE()
+
 # SSL/TLS Parameters
 CA_CRT_PATH = "/ssl/ca.crt"  # Path to the root CA certificate
 
