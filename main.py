@@ -1,37 +1,40 @@
-# This example finds and connects to a BLE temperature sensor (e.g. the one in ble_temperature.py).
-
-# This example demonstrates the low-level bluetooth module. For most
-# applications, we recommend using the higher-level aioble library which takes
-# care of all IRQ handling and connection management. See
-# https://github.com/micropython/micropython-lib/tree/master/micropython/bluetooth/aioble
-# and in particular the temp_client.py example included with aioble.
-
+# cooy from Main.py
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
+from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
+from umqtt.simple import MQTTClient
 import ubluetooth as bluetooth
 import time
 import network
 import machine
-#import urequests
-#import ussl
-#import socket
-#import random
-#import struct
-import micropython
+import urequests
+import ussl
+import socket
 
-import sys
+# SSL/TLS Parameters
+root_ca = "/ssl/fullchain.pem"  # Path to the root CA certificate
 
-# ruff: noqa: E402
-sys.path.append("")
+# Load the CA certificate
+with open(root_ca, "r") as f:
+    ca_cert = f.read()
 
-from micropython import const
+# Define the UUID of the characteristic
+CHARACTERISTIC_UUID = '00001101-0000-1000-8000-00805F9B34FB'
 
-import asyncio
-import central
-#import bluetooth
+# Create a BLE object
+ble = bluetooth.BLE()
 
-import random
-import struct
+# MAC-Adresse des BLE-Geräts
+ble_address = 'XX:XX:XX:XX:XX:XX'
+
+# MQTT-Verbindungsdetails
+mqtt_broker = MQTT_BROKER
+mqtt_port = MQTT_PORT
+mqtt_user = MQTT_USER
+mqtt_password = MQTT_PW
+mqtt_topic = MQTT_TOPIC
+ota_topic = MQTT_OTA_UPDATE
+mqtt_ssl = MQTT_SSL
 
 # Wi-Fi-Verbindungsdetails
 wifi_ssid = SSID
@@ -39,10 +42,104 @@ wifi_password = PASSWORD
 wifi_ssid_test = SSID_TEST
 wifi_password_test = PASSWORD_TEST
 
-# BT-Batt service-UUID
-_BTBATT_UUID = bluetooth.UUID(0xFFF0)
-# org.bluetooth.characteristic.temperature
-_ENV_SENSE_BATT_UUID = bluetooth.UUID(0xfff6)
+# MQTT-Client-Instanz erstellen
+mqtt_client = None
+
+# Callback-Funktion für das BLE-Scanergebnis
+def scan_callback(event, data):
+    print('BLE-Scan')
+    print("Event:", event, "with data:", data)
+    if event == 1: # EVT_GAP_SCAN_RESULT
+        # Parse the data to extract information about the scanned device
+        _, addr_type, addr, _, _, adv_data = data
+        print("Found device with address:", addr)
+        print("Address type:", addr_type)
+        print("Advertisement data:", adv_data)
+    if event == 5: # EVT_GAP_SCAN_RESULT
+        # Parse the data to extract information about the scanned device
+        addr_type, addr, adv_type, rssi, adv_data = data
+        print("Found device with address:", bytes(addr))
+        print("Address type:", addr_type)
+        print("Advertisement data:", bytes(adv_data))
+        print("RSSI:", rssi)
+        print("Advertisment type:", adv_type)
+    if event == 3: # EVENT_ADV_IND
+        addr_type, addr, adv_type, rssi, adv_data = data
+        if addr == ble_address:
+            # Verbindung herstellen
+            ble_connection = bluetooth.BLE()
+            ble_connection.active(True)
+            peripheral = ble_connection.connect(addr)
+
+            # Dienst und Charakteristik für Nachrichtenlesen
+            services = peripheral.services()
+            for service in services:
+                characteristics = service.characteristics()
+                for char in characteristics:
+                    if char.uuid() == 'UUID_der_Charakteristik':
+                        while True:
+                            value = char.read()
+                            # Hier können Sie die empfangenen Werte verarbeiten
+                            print('Received value:', value)
+                            # Sende Wert über MQTT
+                            publish_to_mqtt(value)
+
+# Callback-Funktion für eingehende MQTT-Nachrichten
+def mqtt_callback(topic, msg):
+    print("Received message on topic:", topic.decode(), "with message:", msg.decode())
+    if msg.decode() == 'now' and topic.decode() == ota_topic:
+    # Nachricht zum Starten des OTA-Updates empfangen
+        print('OTA update message received.', msg.decode)
+        # Hier können Sie das OTA-Update durchführen
+        if perform_ota_update():
+            # Sende Wert über MQTT
+            publish_to_mqtt(ota_topic, 'success')
+        else: publish_to_mqtt(ota_topic, 'failure')    
+    
+# Verbindung zu MQTT-Broker herstellen
+def connect_mqtt():
+    # Create an SSL context
+    ssl_params = {
+        'server_hostname': mqtt_broker,
+        'certfile': None,
+        'keyfile': None,
+        'cert_reqs': ussl.CERT_REQUIRED,
+        'cadata': ca_cert,
+    }
+    global mqtt_client
+    mqtt_client = MQTTClient('esp32', mqtt_broker, port=mqtt_port, user=mqtt_user, password=mqtt_password, ssl=mqtt_ssl, ssl_params=ssl_params)
+    mqtt_client.set_callback(mqtt_callback)  # Set the callback function
+    try:
+        mqtt_client.connect()
+        print('Connected to MQTT-Broker')
+        return True
+    except Exception as e:
+        print(f"Failed to connect to MQTT broker: {e}")
+        return False
+
+# Nachricht über MQTT veröffentlichen
+def publish_to_mqtt(topic, value):
+    global mqtt_client
+    mqtt_client.publish(topic, str(value))
+
+# Auf MQTT-Nachrichten prüfen
+def check_mqtt_messages():
+    # Über MQTT prüfen, ob ein OTA-Update erforderlich ist
+    mqtt_client.subscribe(ota_topic)
+    while True:
+        try:
+            mqtt_client.check_msg()  # Check for incoming message
+        except Exception as e:
+            print(f"Error checking messages: {e}")
+            reconnect_mqtt()
+
+def reconnect_mqtt():
+    connected = False
+    while not connected:
+        connected = connect_mqtt()
+        if not connected:
+            print("Retrying MQTT connection in 5 seconds...")
+            time.sleep(5)  # Wait a short time
 
 # OTA-Update durchführen
 def perform_ota_update():
@@ -51,6 +148,13 @@ def perform_ota_update():
     if ota_updater.download_and_install_update_if_available():
         return True
     else: return False
+
+# BLE-Scan starten
+def start_ble_scan():
+    ble.active(True)
+    ble.gap_scan(0)  # Start scanning, 0 means continuous scanning
+    ble.irq(scan_callback) # Set the scan callback
+#    ble.gap_scan(1)  # Enable scanning     
 
 # Function to reset the WiFi interface
 def reset_wifi_interface():
@@ -91,83 +195,17 @@ def connect_to_wifi(ssid, password):
     
     print(f'Failed to connect to {ssid} after {attempts} attempts')
     return False
-    
-# Helper to decode the temperature characteristic encoding (sint16, hundredths of a degree).
-def _decode_temperature(data):
-    return struct.unpack("<h", data)[0] / 100
 
-async def find_temp_sensor():
-    # Scan for 5 seconds, in active mode, with very low interval/window (to
-    # maximise detection rate).
-    async with central.scan(5000, interval_us=30000, window_us=30000, active=True) as scanner:
-        async for result in scanner:
-            #print(result, result.name(), result.rssi, result.services())
-            print(result.name())
-            # See if it matches our name and the environmental sensing service.
-            for service in result.services():
-                print(service)
-            #if result.name() == "BT-Battery" and 
-            if _BTBATT_UUID in result.services():
-                return result.device
-    return None
-    
-async def notification_handler(batt_char):
-    """
-    This function will be called whenever new data is received from the BLE device.
-    :param characteristic: The characteristic from which the notification was received.
-    """
-    print("notification_handler")
-    while True:
-        data = await batt_char.notified()
-        hex_data = data.hex()
-        print(hex_data[0])
-        print(hex_data[1])
-        print(data[0])
-        if data[0] == 58:
-            print(f"Notification_3A: {hex_data}")
-        print(f"Notification: {hex_data}")
 
-async def main():
-        # Try to connect to the primary WiFi network
+# Hauptfunktion
+def main():
+    # Try to connect to the primary WiFi network
     if not connect_to_wifi(wifi_ssid, wifi_password):
         # If the primary connection fails, try the secondary WiFi network
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
-    
-    perform_ota_update()
-    
-    device = await find_temp_sensor()
-    if not device:
-        print("Temperature sensor not found")
-        return
+    Connect_mqtt()
+    check_mqtt_messages()
+    start_ble_scan()
 
-    try:
-        print("Connecting to", device)
-        connection = await device.connect()
-    except asyncio.TimeoutError:
-        print("Timeout during connection")
-        return
-
-    async with connection:
-        try:
-            batt_service = await connection.service(_BTBATT_UUID)
-            #temp_characteristic = await temp_service.characteristic(_ENV_SENSE_TEMP_UUID)
-            batt_char = await batt_service.characteristic(_ENV_SENSE_BATT_UUID)
-            # Subscribe for notification.
-            await batt_char.subscribe(notify=True)
-            #await notification_handler(batt_char)
-            print("return from notification handler")
-        except asyncio.TimeoutError:
-            print("Timeout discovering services/characteristics")
-            return
-        while True:
-        #while connection.is_connected():
-            #temp_deg_c = _decode_temperature(await temp_characteristic.read())
-            #print("Temperature: {:.2f}".format(temp_deg_c))
-            await notification_handler(batt_char)
-            print("sleep")
-            await asyncio.sleep_ms(1000)
-
-
-asyncio.run(main())
-    
-    
+if __name__ == '__main__':
+    main()
