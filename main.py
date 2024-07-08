@@ -203,7 +203,7 @@ def main():
     if not connect_to_wifi(wifi_ssid, wifi_password):
         # If the primary connection fails, try the secondary WiFi network
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
-    Connect_mqtt()
+    connect_mqtt()
     check_mqtt_messages()
     start_ble_scan()
 
