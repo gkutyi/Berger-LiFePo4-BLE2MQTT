@@ -35,11 +35,21 @@ mqtt_client = None
 
 # OTA-Update durchführen
 def perform_ota_update():
+    # Disable BLE before starting OTA update to free up memory
+    ble.active(False)
+    gc.collect()
+    
     firmware_url = "https://raw.githubusercontent.com/gkutyi/Berger-LiFePo4-BLE2MQTT/"
     ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
+
+    success = False
     if ota_updater.download_and_install_update_if_available():
-        return True
-    else: return False
+        success = True
+  
+    # Re-enable BLE after OTA update
+    ble.active(True)
+    gc.collect()
+    return success      
     
 # Callback-Funktion für das BLE-Scanergebnis
 def scan_callback(event, data):
@@ -87,12 +97,15 @@ def mqtt_callback(topic, msg):
     # Nachricht zum Starten des OTA-Updates empfangen
         print('OTA update message received.', msg.decode)
         # Hier können Sie das OTA-Update durchführen
+        ble.active(False)
+        gc.collect()
         if perform_ota_update():
             # Sende Wert über MQTT
             gc.collect()
             publish_to_mqtt(ota_topic, 'success')
         else: publish_to_mqtt(ota_topic, 'failure')
-
+        ble.active(True)
+        
 # BLE-Scan starten
 def start_ble_scan():
     ble.active(True)
@@ -141,15 +154,23 @@ def check_mqtt_messages():
             gc.collect()  # Collect garbage to free up memory
 
 def reconnect_mqtt():
+    global mqtt_client
     connected = False
     attempts = 0
-    max_attempts = 5  # Limit the number of reconnection attempts
+    max_attempts = 5
+
     while not connected and attempts < max_attempts:
+        if mqtt_client is not None:
+            mqtt_client.disconnect()
+        mqtt_client = None
+        gc.collect()  # Free memory
+
         connected = connect_mqtt()
         if not connected:
             attempts += 1
             print(f"Retrying MQTT connection in 5 seconds... (Attempt {attempts}/{max_attempts})")
-            time.sleep(5)  # Wait a short time
+            time.sleep(5)
+
     if not connected:
         print("Max MQTT reconnection attempts reached. Giving up.")
 
