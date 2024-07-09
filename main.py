@@ -13,7 +13,7 @@ from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 
 # Define the MAC address and UUID of the target BLE device
-TARGET_MAC = b'\x04\x7f\x0e\x9e\xxd1\x64:'
+TARGET_MAC = b'\x04\x7f\x0e\x9e\xd1\x64:'
 CHARACTERISTIC_UUID = bluetooth.UUID('fff6')
 
 # Create a BLE object
