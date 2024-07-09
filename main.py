@@ -5,16 +5,24 @@ import network
 import usocket
 import ussl
 import ubluetooth as bluetooth
+import ubinascii
+import struct
 from umqtt.simple import MQTTClient
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 
-# Define the UUID of the characteristic
-CHARACTERISTIC_UUID = '00001101-0000-1000-8000-00805F9B34FB'
+# Define the MAC address and UUID of the target BLE device
+TARGET_MAC = b'\x04\x7f\x0e\x9e\xxd1\x64:'
+CHARACTERISTIC_UUID = bluetooth.UUID('fff6')
 
 # Create a BLE object
 ble = bluetooth.BLE()
+ble.active(True)
+
+# Global variables to hold the connection handle and characteristic handle
+conn_handle = None
+char_handle = None
 
 # SSL/TLS Parameters
 CA_CRT_PATH = "/ssl/ca.crt"  # Path to the root CA certificate
@@ -52,39 +60,40 @@ def perform_ota_update():
     print("OTA update completed.")
     return success
 
-def scan_callback(event, data):
-    try:
-        print('BLE-Scan Event:', event, 'with data:', data)
-        if event == 1:  # EVT_GAP_SCAN_RESULT
-            _, addr_type, addr, _, _, adv_data = data
-            print("Found device with address:", addr)
-            print("Address type:", addr_type)
-            print("Advertisement data:", adv_data)
-        elif event == 5:  # EVT_GAP_SCAN_RESULT
-            addr_type, addr, adv_type, rssi, adv_data = data
-            print("Found device with address:", bytes(addr))
-            print("Address type:", addr_type)
-            print("Advertisement data:", bytes(adv_data))
-            print("RSSI:", rssi)
-            print("Advertisment type:", adv_type)
-        elif event == 3:  # EVENT_ADV_IND
-            addr_type, addr, adv_type, rssi, adv_data = data
-            if addr == ble_address:
-                ble_connection = bluetooth.BLE()
-                ble_connection.active(True)
-                peripheral = ble_connection.connect(addr)
-                services = peripheral.services()
-                for service in services:
-                    characteristics = service.characteristics()
-                    for char in characteristics:
-                        if char.uuid() == CHARACTERISTIC_UUID:
-                            while True:
-                                value = char.read()
-                                print('Received value:', value)
-                                publish_to_mqtt(mqtt_topic, value)
-    except Exception as e:
-        print(f"Error in BLE scan callback: {e}")
+def ble_irq(event, data):
+    global conn_handle, char_handle
 
+    if event == 1:  # GAP scan result
+        addr_type, addr, adv_type, rssi, adv_data = data
+        if addr == TARGET_MAC:
+            print(f"Found target device with MAC: {ubinascii.hexlify(addr)}")
+            ble.gap_scan(None)  # Stop scanning
+            ble.gap_connect(addr_type, addr)  # Connect to the device
+
+    elif event == 7:  # Connection complete
+        conn_handle, addr_type, addr = data
+        print(f"Connected to device with MAC: {ubinascii.hexlify(addr)}")
+        ble.gattc_discover_services(conn_handle)  # Discover services
+
+    elif event == 8:  # Service result
+        conn_handle, start_handle, end_handle, uuid = data
+        print(f"Service UUID: {uuid}")
+        ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle)
+
+    elif event == 9:  # Characteristic result
+        conn_handle, def_handle, value_handle, properties, uuid = data
+        if uuid == CHARACTERISTIC_UUID:
+            char_handle = value_handle
+            print(f"Found characteristic with UUID: {uuid}")
+            ble.gattc_write(conn_handle, char_handle, struct.pack('<BB', 0x01, 0x00))  # Enable notifications
+
+    elif event == 11:  # Notification or indication
+        conn_handle, value_handle, notify_data = data
+        if value_handle == char_handle:
+            print("Notification received:", notify_data)
+            # Display part of the data array
+            print("Data segment:", notify_data[:5])  # Adjust the slice as needed
+            
 def mqtt_callback(topic, msg):
     print("Received message on topic:", topic.decode(), "with message:", msg.decode())
     if msg.decode() == 'now' and topic.decode() == ota_topic:
@@ -96,10 +105,8 @@ def mqtt_callback(topic, msg):
             publish_to_mqtt(ota_topic, 'failure')
 
 def start_ble_scan():
-    ble.active(True)
-    ble.gap_scan(10000)
-    ble.irq(scan_callback)
-    print("BLE scan started.")
+    ble.irq(ble_irq)
+    ble.gap_scan(10000, 30000, 30000)  # Active scan for 10 seconds
 
 def connect_mqtt():
     global mqtt_client
