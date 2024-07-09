@@ -1,14 +1,14 @@
-from ota import OTAUpdater
-from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
-from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
-from umqtt.simple import MQTTClient
-import ubluetooth as bluetooth
+import gc
+import ntptime  # Import NTP module
+import time
 import network
 import usocket
 import ussl
-import time
-import ntptime  # Import NTP module
-import gc
+import ubluetooth as bluetooth
+from umqtt.simple import MQTTClient
+from ota import OTAUpdater
+from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
+from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 
 # Define the UUID of the characteristic
 CHARACTERISTIC_UUID = '00001101-0000-1000-8000-00805F9B34FB'
@@ -33,87 +33,74 @@ wifi_password_test = PASSWORD_TEST
 # MQTT Client Instance
 mqtt_client = None
 
-# OTA-Update durchführen
 def perform_ota_update():
+    print("Starting OTA update...")
     # Disable BLE before starting OTA update to free up memory
     ble.active(False)
     gc.collect()
-    
+
     firmware_url = "https://raw.githubusercontent.com/gkutyi/Berger-LiFePo4-BLE2MQTT/"
     ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
-
+    
     success = False
     if ota_updater.download_and_install_update_if_available():
         success = True
-  
+
     # Re-enable BLE after OTA update
     ble.active(True)
     gc.collect()
-    return success      
-    
-# Callback-Funktion für das BLE-Scanergebnis
-def scan_callback(event, data):
-    print('BLE-Scan')
-    print("Event:", event, "with data:", data)
-    if event == 1: # EVT_GAP_SCAN_RESULT
-        # Parse the data to extract information about the scanned device
-        _, addr_type, addr, _, _, adv_data = data
-        print("Found device with address:", addr)
-        print("Address type:", addr_type)
-        print("Advertisement data:", adv_data)
-    if event == 5: # EVT_GAP_SCAN_RESULT
-        # Parse the data to extract information about the scanned device
-        addr_type, addr, adv_type, rssi, adv_data = data
-        print("Found device with address:", bytes(addr))
-        print("Address type:", addr_type)
-        print("Advertisement data:", bytes(adv_data))
-        print("RSSI:", rssi)
-        print("Advertisment type:", adv_type)
-    if event == 3: # EVENT_ADV_IND
-        addr_type, addr, adv_type, rssi, adv_data = data
-        if addr == ble_address:
-            # Verbindung herstellen
-            ble_connection = bluetooth.BLE()
-            ble_connection.active(True)
-            peripheral = ble_connection.connect(addr)
+    print("OTA update completed.")
+    return success
 
-            # Dienst und Charakteristik für Nachrichtenlesen
-            services = peripheral.services()
-            for service in services:
-                characteristics = service.characteristics()
-                for char in characteristics:
-                    if char.uuid() == 'UUID_der_Charakteristik':
-                        while True:
-                            value = char.read()
-                            # Hier können Sie die empfangenen Werte verarbeiten
-                            print('Received value:', value)
-                            # Sende Wert über MQTT
-                            publish_to_mqtt(value)
-                            
-# Callback Function for Incoming MQTT Messages
+def scan_callback(event, data):
+    try:
+        print('BLE-Scan Event:', event, 'with data:', data)
+        if event == 1:  # EVT_GAP_SCAN_RESULT
+            _, addr_type, addr, _, _, adv_data = data
+            print("Found device with address:", addr)
+            print("Address type:", addr_type)
+            print("Advertisement data:", adv_data)
+        elif event == 5:  # EVT_GAP_SCAN_RESULT
+            addr_type, addr, adv_type, rssi, adv_data = data
+            print("Found device with address:", bytes(addr))
+            print("Address type:", addr_type)
+            print("Advertisement data:", bytes(adv_data))
+            print("RSSI:", rssi)
+            print("Advertisment type:", adv_type)
+        elif event == 3:  # EVENT_ADV_IND
+            addr_type, addr, adv_type, rssi, adv_data = data
+            if addr == ble_address:
+                ble_connection = bluetooth.BLE()
+                ble_connection.active(True)
+                peripheral = ble_connection.connect(addr)
+                services = peripheral.services()
+                for service in services:
+                    characteristics = service.characteristics()
+                    for char in characteristics:
+                        if char.uuid() == CHARACTERISTIC_UUID:
+                            while True:
+                                value = char.read()
+                                print('Received value:', value)
+                                publish_to_mqtt(mqtt_topic, value)
+    except Exception as e:
+        print(f"Error in BLE scan callback: {e}")
+
 def mqtt_callback(topic, msg):
     print("Received message on topic:", topic.decode(), "with message:", msg.decode())
     if msg.decode() == 'now' and topic.decode() == ota_topic:
-    # Nachricht zum Starten des OTA-Updates empfangen
-        print('OTA update message received.', msg.decode)
-        # Hier können Sie das OTA-Update durchführen
-        ble.active(False)
-        gc.collect()
+        print('OTA update message received.')
         if perform_ota_update():
-            # Sende Wert über MQTT
             gc.collect()
             publish_to_mqtt(ota_topic, 'success')
-        else: publish_to_mqtt(ota_topic, 'failure')
-        ble.active(True)
-        
-# BLE-Scan starten
+        else:
+            publish_to_mqtt(ota_topic, 'failure')
+
 def start_ble_scan():
     ble.active(True)
-    ble.gap_scan(10000)  # Start scanning, 0 means continuous scanning
-    ble.irq(scan_callback) # Set the scan callback
-#    ble.gap_scan(1)  # Enable scanning     
+    ble.gap_scan(10000)
+    ble.irq(scan_callback)
+    print("BLE scan started.")
 
-# Connect to MQTT Broker with SSL
 def connect_mqtt():
     global mqtt_client
     try:
@@ -121,7 +108,6 @@ def connect_mqtt():
         sock = usocket.socket(usocket.AF_INET, usocket.SOCK_STREAM)
         sock.connect(addr_info)
 
-        # Wrap the socket with SSL
         with open(CA_CRT_PATH, 'rb') as f:
             ca_cert = f.read()
         sock = ussl.wrap_socket(sock, server_hostname=MQTT_BROKER, cert_reqs=ussl.CERT_REQUIRED, cadata=ca_cert)
@@ -135,23 +121,22 @@ def connect_mqtt():
         print(f"Failed to connect to MQTT broker: {e}")
         return False
 
-# Publish Message to MQTT
 def publish_to_mqtt(topic, value):
     global mqtt_client
     mqtt_client.publish(topic, str(value))
+    print(f"Published to {topic}: {value}")
 
-# Check for MQTT Messages
 def check_mqtt_messages():
     global mqtt_client
     mqtt_client.subscribe(MQTT_OTA_UPDATE)
     while True:
         try:
             mqtt_client.wait_msg()
-            gc.collect()  # Collect garbage to free up memory
+            gc.collect()
         except Exception as e:
             print(f"Error checking messages: {e}")
             reconnect_mqtt()
-            gc.collect()  # Collect garbage to free up memory
+            gc.collect()
 
 def reconnect_mqtt():
     global mqtt_client
@@ -163,7 +148,7 @@ def reconnect_mqtt():
         if mqtt_client is not None:
             mqtt_client.disconnect()
         mqtt_client = None
-        gc.collect()  # Free memory
+        gc.collect()
 
         connected = connect_mqtt()
         if not connected:
@@ -174,7 +159,6 @@ def reconnect_mqtt():
     if not connected:
         print("Max MQTT reconnection attempts reached. Giving up.")
 
-# Connect to WiFi
 def connect_to_wifi(ssid, password):
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
@@ -184,7 +168,7 @@ def connect_to_wifi(ssid, password):
     for attempt in range(attempts):
         try:
             wlan.connect(ssid, password)
-            timeout = 5  # Seconds to wait for connection
+            timeout = 5
             while not wlan.isconnected() and timeout > 0:
                 print(f'Attempting to connect to {ssid}... (Attempt {attempt + 1}/{attempts})')
                 time.sleep(1)
@@ -196,24 +180,22 @@ def connect_to_wifi(ssid, password):
                 return True
         except OSError as e:
             print(f'Error on attempt {attempt + 1}: {e}')
-            time.sleep(2)  # Wait before retrying
+            time.sleep(2)
         
     print(f'Failed to connect to {ssid} after {attempts} attempts')
     return False
 
-# Function to synchronize time with NTP server
 def sync_time():
     try:
-        ntptime.settime()  # Synchronize time from NTP server
+        ntptime.settime()
         print("Time synchronized successfully")
     except Exception as e:
         print(f"Failed to synchronize time: {e}")
 
-# Main Function
 def main():
     if not connect_to_wifi(wifi_ssid, wifi_password):
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
-    sync_time()  # Synchronize time before connecting to MQTT
+    sync_time()
     start_ble_scan()
     if connect_mqtt():
         check_mqtt_messages()
