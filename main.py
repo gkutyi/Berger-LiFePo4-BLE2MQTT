@@ -16,14 +16,14 @@ import ubinascii
 CA_CRT_PATH = "/ssl/ca.crt"  # Path to the root CA certificate
 
 # Define the UUID of the characteristic
-CHARACTERISTIC_UUID = bluetooth.UUID('00001101-0000-1000-8000-00805F9B34FB')
+CHARACTERISTIC_UUID = bluetooth.UUID('fff6')
 
 # Create a BLE object
 ble = bluetooth.BLE()
 ble.active(True)
 
 # MAC address of the BLE device
-TARGET_MAC = b'\x03\xbb\xd0\xc9\xae:'
+TARGET_MAC = b'\x04\x7f\x0e\x9e\xd1\x64:'
 
 # MQTT connection details
 mqtt_broker = MQTT_BROKER
