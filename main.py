@@ -13,7 +13,7 @@ from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 
 # Define the MAC address and UUID of the target BLE device
-TARGET_MAC = b'047f0e9ed164'
+TARGET_MAC = b'\x04\x7f\x0e\x9e\xd1\x64'
 CHARACTERISTIC_UUID = bluetooth.UUID('fff6')
 
 # Create a BLE object
@@ -85,6 +85,8 @@ def ble_irq(event, data):
         elif event == 5:  # GAP scan result
             addr_type, addr, adv_type, rssi, adv_data = data
             print(f"Found device with address: {ubinascii.hexlify(addr)}")
+            print(f"Found device with address: {bytes(addr)}")
+            print(f"TARGET_MAC:", TARGET_MAC)
             print("Address type:", addr_type)
             print(f"Advertisement data: {ubinascii.hexlify(adv_data)}")
             print(f"Advertisement data: {bytes(adv_data)}")
@@ -134,6 +136,11 @@ def ble_irq(event, data):
                 print("Notification received:", notify_data)
                 # Display part of the data array
                 print("Data segment:", notify_data[:5])  # Adjust the slice as needed
+                
+        elif event == 27:  # Connection update
+            conn_handle, conn_interval, conn_latency, supervision_timeout = data
+            print(f"Connection updated: handle={conn_handle}, interval={conn_interval}, latency={conn_latency}, timeout={supervision_timeout}")
+            handle_connection_update(conn_handle, conn_interval, conn_latency, supervision_timeout)
             
     except Exception as e:
         print(f"Error in BLE scan callback: {e}")
@@ -148,6 +155,23 @@ def mqtt_callback(topic, msg):
         else:
             publish_to_mqtt(ota_topic, 'failure')
 
+def handle_connection_update(conn_handle, conn_interval, conn_latency, supervision_timeout):
+    # Define preferred parameters
+    MIN_CONN_INTERVAL = 6  # 7.5ms
+    MAX_CONN_INTERVAL = 3200  # 4s
+    MAX_CONN_LATENCY = 499  # 499 intervals
+    MAX_SUPERVISION_TIMEOUT = 3200  # 32s
+
+    # Check if parameters are within acceptable range
+    if (MIN_CONN_INTERVAL <= conn_interval <= MAX_CONN_INTERVAL and
+        conn_latency <= MAX_CONN_LATENCY and
+        supervision_timeout <= MAX_SUPERVISION_TIMEOUT):
+        print("Connection parameters are acceptable.")
+    else:
+        print("Connection parameters are outside acceptable range, considering reconnection...")
+        ble.gap_disconnect(conn_handle)
+        start_ble_scan()  # Try to reconnect
+        
 def start_ble_scan():
     ble.irq(ble_irq)
     ble.gap_scan(10000, 30000, 30000)  # Active scan for 10 seconds
