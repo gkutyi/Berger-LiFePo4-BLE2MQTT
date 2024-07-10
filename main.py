@@ -133,7 +133,10 @@ def ble_irq(event, data):
             print("Notification received:", notify_data)
             # Display part of the data array
             print("Data segment:", notify_data[:5])  # Adjust the slice as needed
-            
+
+    except Exception as e:
+        print(f"Error in BLE scan callback: {e}")
+    
 def mqtt_callback(topic, msg):
     print("Received message on topic:", topic.decode(), "with message:", msg.decode())
     if msg.decode() == 'now' and topic.decode() == ota_topic:
