@@ -14,7 +14,7 @@ from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_
 
 # Define the MAC address and UUID of the target BLE device
 TARGET_MAC = b'\x04\x7f\x0e\x9e\xd1\x64'
-CHARACTERISTIC_UUID = bluetooth.UUID('fff6')
+CHARACTERISTIC_UUID = bluetooth.UUID('0xfff6')
 
 # Create a BLE object
 ble = bluetooth.BLE()
