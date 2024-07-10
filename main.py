@@ -75,11 +75,11 @@ def ble_irq(event, data):
             print("CENTRAL:DISCONNECT")
 
         elif event == 3:  # 
-            conn_handle, addr_type, addr = data
+            conn_handle, attr_handle = data
             print("GATT_WRITE")
 
         elif event == 4:  # 
-            conn_handle, addr_type, addr = data
+            conn_handle, attr_handle = data
             print("GATTS_READ_REQUET")
         
         elif event == 5:  # GAP scan result
@@ -95,8 +95,8 @@ def ble_irq(event, data):
                 print("Berger-BATT connected")
             
         elif event == 6:  # 
-            conn_handle, addr_type, addr = data
-            print("SCAN_DONE")    
+            print("SCAN_DONE")
+            pass
 
         elif event == 7:  # Connection complete
             conn_handle, addr_type, addr = data
@@ -113,8 +113,8 @@ def ble_irq(event, data):
             ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle)
 
         elif event == 10:  # 
-            conn_handle, addr_type, addr = data
-            print("SERVICE DONE")  
+            conn_handle, status = data
+            print(f"SERVICE DONE", status)  
         
         elif event == 11:  # Characteristic result
             conn_handle, def_handle, value_handle, properties, uuid = data
