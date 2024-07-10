@@ -64,76 +64,76 @@ def ble_irq(event, data):
     global conn_handle, char_handle
 
     print('BLE-Scan Event:', event, 'with data:', data)
-
-    if event == 1:  # 
-        conn_handle, addr_type, addr = data
-        print(f"WSP32 has connected with MAC: {ubinascii.hexlify(addr)}")
-        ble.gattc_discover_services(conn_handle)  # Discover services
+    try:
+        if event == 1:  # 
+            conn_handle, addr_type, addr = data
+            print(f"WSP32 has connected with MAC: {ubinascii.hexlify(addr)}")
+            ble.gattc_discover_services(conn_handle)  # Discover services
         
-    elif event == 2:  # 
-        conn_handle, addr_type, addr = data
-        print("CENTRAL:DISCONNECT")
+        elif event == 2:  # 
+            conn_handle, addr_type, addr = data
+            print("CENTRAL:DISCONNECT")
 
-    elif event == 3:  # 
-        conn_handle, addr_type, addr = data
-        print("GATT_WRITE")
+        elif event == 3:  # 
+            conn_handle, addr_type, addr = data
+            print("GATT_WRITE")
 
-    elif event == 4:  # 
-        conn_handle, addr_type, addr = data
-        print("GATTS_READ_REQUET")
+        elif event == 4:  # 
+            conn_handle, addr_type, addr = data
+            print("GATTS_READ_REQUET")
         
-    elif event == 5:  # GAP scan result
-        addr_type, addr, adv_type, rssi, adv_data = data
-        print("Found device with address:", addr)
-        print("Address type:", addr_type)
-        print("Advertisement data:", adv_data)
-        if addr == TARGET_MAC:
-            print(f"Found Berger-BATT with MAC: {ubinascii.hexlify(addr)}")
-            ble.gap_scan(None)  # Stop scanning
-            print("Scanning stopped")
-            ble.gap_connect(addr_type, addr)  # Connect to the device
-            print("Berger-BATT connected")
+        elif event == 5:  # GAP scan result
+            addr_type, addr, adv_type, rssi, adv_data = data
+            print("Found device with address:", addr)
+            print("Address type:", addr_type)
+            print("Advertisement data:", adv_data)
+            if addr == TARGET_MAC:
+                print(f"Found Berger-BATT with MAC: {ubinascii.hexlify(addr)}")
+                ble.gap_scan(None)  # Stop scanning
+                print("Scanning stopped")
+                ble.gap_connect(addr_type, addr)  # Connect to the device
+                print("Berger-BATT connected")
             
-    elif event == 6:  # 
-        conn_handle, addr_type, addr = data
-        print("SCAN_DONE")    
+        elif event == 6:  # 
+            conn_handle, addr_type, addr = data
+            print("SCAN_DONE")    
 
-    elif event == 7:  # Connection complete
-        conn_handle, addr_type, addr = data
-        print(f"Berger-BATT Connected with MAC: {ubinascii.hexlify(addr)}")
-        ble.gattc_discover_services(conn_handle)  # Discover services
+        elif event == 7:  # Connection complete
+            conn_handle, addr_type, addr = data
+            print(f"Berger-BATT Connected with MAC: {ubinascii.hexlify(addr)}")
+            ble.gattc_discover_services(conn_handle)  # Discover services
         
-    elif event == 8:  # 
-        conn_handle, addr_type, addr = data
-        print("PERIPHERAL DISCONNECT")
+        elif event == 8:  # 
+            conn_handle, addr_type, addr = data
+            print("PERIPHERAL DISCONNECT")
         
-    elif event == 9:  # Service result
-        conn_handle, start_handle, end_handle, uuid = data
-        print(f"Service UUID: {uuid}")
-        ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle)
+        elif event == 9:  # Service result
+            conn_handle, start_handle, end_handle, uuid = data
+            print(f"Service UUID: {uuid}")
+            ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle)
 
-    elif event == 10:  # 
-        conn_handle, addr_type, addr = data
-        print("SERVICE DONE")  
+        elif event == 10:  # 
+            conn_handle, addr_type, addr = data
+            print("SERVICE DONE")  
         
-    elif event == 11:  # Characteristic result
-        conn_handle, def_handle, value_handle, properties, uuid = data
-        print(f"Found characteristic with UUID: {uuid}")
-        if uuid == CHARACTERISTIC_UUID:
-            char_handle = value_handle
-            print(f"Found characteristic: {uuid}")
-            ble.gattc_write(conn_handle, char_handle, struct.pack('<BB', 0x01, 0x00))  # Enable notifications
+        elif event == 11:  # Characteristic result
+            conn_handle, def_handle, value_handle, properties, uuid = data
+            print(f"Found characteristic with UUID: {uuid}")
+            if uuid == CHARACTERISTIC_UUID:
+                char_handle = value_handle
+                print(f"Found characteristic: {uuid}")
+                ble.gattc_write(conn_handle, char_handle, struct.pack('<BB', 0x01, 0x00))  # Enable notifications
     
-    elif event == 18 or event == 19:  # Notification or indication
-        conn_handle, value_handle, notify_data = data
-        print("Event: ", event)
-        print("Value_Handle: ", value_handle)
-        print("Char_Handle: ", char_handle)
-        if value_handle == char_handle:
-            print("Notification received:", notify_data)
-            # Display part of the data array
-            print("Data segment:", notify_data[:5])  # Adjust the slice as needed
-
+        elif event == 18 or event == 19:  # Notification or indication
+            conn_handle, value_handle, notify_data = data
+            print("Event: ", event)
+            print("Value_Handle: ", value_handle)
+            print("Char_Handle: ", char_handle)
+            if value_handle == char_handle:
+                print("Notification received:", notify_data)
+                # Display part of the data array
+                print("Data segment:", notify_data[:5])  # Adjust the slice as needed
+            
     except Exception as e:
         print(f"Error in BLE scan callback: {e}")
     
