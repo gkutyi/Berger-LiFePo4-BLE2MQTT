@@ -13,7 +13,7 @@ from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
 from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
 
 # Define the MAC address and UUID of the target BLE device
-TARGET_MAC = b'\x04\x7f\x0e\x9e\xd1\x64:'
+TARGET_MAC = b'047f0e9ed164'
 CHARACTERISTIC_UUID = bluetooth.UUID('fff6')
 
 # Create a BLE object
@@ -84,9 +84,10 @@ def ble_irq(event, data):
         
         elif event == 5:  # GAP scan result
             addr_type, addr, adv_type, rssi, adv_data = data
-            print("Found device with address:", addr)
+            print(f"Found device with address: {ubinascii.hexlify(addr)}")
             print("Address type:", addr_type)
-            print("Advertisement data:", adv_data)
+            print(f"Advertisement data: {ubinascii.hexlify(adv_data)}")
+            print(f"Advertisement data: {bytes(adv_data)}")
             if addr == TARGET_MAC:
                 print(f"Found Berger-BATT with MAC: {ubinascii.hexlify(addr)}")
                 ble.gap_scan(None)  # Stop scanning
@@ -109,7 +110,7 @@ def ble_irq(event, data):
         
         elif event == 9:  # Service result
             conn_handle, start_handle, end_handle, uuid = data
-            print(f"Service UUID: {uuid}")
+            print(f"Service UUID: {bluetooth.UUID(uuid)}")
             ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle)
 
         elif event == 10:  # 
@@ -118,10 +119,10 @@ def ble_irq(event, data):
         
         elif event == 11:  # Characteristic result
             conn_handle, def_handle, value_handle, properties, uuid = data
-            print(f"Found characteristic with UUID: {uuid}")
+            print(f"Found characteristic with UUID: {bluetooth.UUID(uuid)}")
             if uuid == CHARACTERISTIC_UUID:
                 char_handle = value_handle
-                print(f"Found characteristic: {uuid}")
+                print(f"Found characteristic: {bluetooth.UUID(uuid)}")
                 ble.gattc_write(conn_handle, char_handle, struct.pack('<BB', 0x01, 0x00))  # Enable notifications
     
         elif event == 18 or event == 19:  # Notification or indication
