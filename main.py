@@ -126,7 +126,11 @@ def ble_irq(event, data):
                 char_handle = value_handle
                 print(f"Found characteristic: {bluetooth.UUID(uuid)}")
                 ble.gattc_write(conn_handle, char_handle, struct.pack('<BB', 0x01, 0x00))  # Enable notifications
-    
+  
+        elif event == 12:  # 
+            conn_handle, status = data
+            print(f"CHARACTERITIC DONE", status)  
+            
         elif event == 18 or event == 19:  # Notification or indication
             conn_handle, value_handle, notify_data = data
             print("Event: ", event)
