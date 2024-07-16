@@ -1,3 +1,4 @@
+import uasyncio as asyncio
 import webrepl
 import gc
 import ntptime  # Import NTP module
@@ -213,7 +214,7 @@ def publish_to_mqtt(topic, value):
     mqtt_client.publish(topic, str(value))
     print(f"Published to {topic}: {value}")
 
-def check_mqtt_messages():
+async def check_mqtt_messages_async():
     global mqtt_client
     mqtt_client.subscribe(MQTT_OTA_UPDATE)
     mqtt_client.subscribe(debug_topic)
@@ -226,7 +227,8 @@ def check_mqtt_messages():
             print(f"Error checking messages: {e}")
             reconnect_mqtt()
             gc.collect()
-
+        await asyncio.sleep(0)  # Yield control to allow other tasks to run
+        
 def reconnect_mqtt():
     global mqtt_client
     connected = False
@@ -281,14 +283,13 @@ def sync_time():
     except Exception as e:
         print(f"Failed to synchronize time: {e}")
 
-def main():
+async def main_async():
     if not connect_to_wifi(wifi_ssid, wifi_password):
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
-#    webrepl.start()
     sync_time()
     if connect_mqtt():
-        check_mqtt_messages()
-    start_ble_scan()
+        # Run both check_mqtt_messages_async and start_ble_scan_async concurrently
+        await asyncio.gather(check_mqtt_messages_async(), start_ble_scan())
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main_async())
