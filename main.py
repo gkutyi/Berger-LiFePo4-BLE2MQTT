@@ -1,3 +1,4 @@
+import webrepl
 import gc
 import ntptime  # Import NTP module
 import time
@@ -10,11 +11,13 @@ import struct
 from umqtt.simple import MQTTClient
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
-from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_SSL
+from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_ESP32_DEBUG, MQTT_SSL
 
 # Define the MAC address and UUID of the target BLE device
 TARGET_MAC = b'\x04\x7f\x0e\x9e\xd1\x64'
+
 SERVICE_UUID = bluetooth.UUID(0xfff0)
+
 CHARACTERISTIC_UUID = bluetooth.UUID(0xfff6)
 
 # Create a BLE object
@@ -32,6 +35,7 @@ CA_CRT_PATH = "/ssl/ca.crt"  # Path to the root CA certificate
 CLIENT_ID = 'ESP32WoMoClient'
 mqtt_topic = MQTT_TOPIC
 ota_topic = MQTT_OTA_UPDATE
+debug_topic = MQTT_ESP32_DEBUG
 
 # Wi-Fi Connection Details
 wifi_ssid = SSID
@@ -127,10 +131,10 @@ def ble_irq(event, data):
                 char_handle = value_handle
                 print(f"Found characteristic: {bluetooth.UUID(uuid)}")
                 ble.gattc_write(conn_handle, char_handle, struct.pack('<BB', 0x01, 0x00))  # Enable notifications
-  
+      
         elif event == 12:  # 
             conn_handle, status = data
-            print(f"CHARACTERITIC DONE", status)  
+            print(f"CHARACTERITIC DONE", status)
             
         elif event == 18 or event == 19:  # Notification or indication
             conn_handle, value_handle, notify_data = data
@@ -209,6 +213,8 @@ def publish_to_mqtt(topic, value):
 def check_mqtt_messages():
     global mqtt_client
     mqtt_client.subscribe(MQTT_OTA_UPDATE)
+    mqtt_client.subscribe(debug_topic)
+    publish_to_mqtt(debug_topic, 'mqtt-client subscribed')
     while True:
         try:
             mqtt_client.wait_msg()
@@ -275,10 +281,11 @@ def sync_time():
 def main():
     if not connect_to_wifi(wifi_ssid, wifi_password):
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
+#    webrepl.start()
     sync_time()
-    start_ble_scan()
     if connect_mqtt():
         check_mqtt_messages()
+    start_ble_scan()
 
 if __name__ == '__main__':
     main()
