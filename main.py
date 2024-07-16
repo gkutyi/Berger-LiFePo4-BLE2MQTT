@@ -1,4 +1,4 @@
-import uasyncio as asyncio
+mport uasyncio as asyncio
 import webrepl
 import gc
 import ntptime  # Import NTP module
@@ -82,32 +82,41 @@ def ble_irq(event, data):
         elif event == 2:  # 
             conn_handle, addr_type, addr = data
             print("CENTRAL:DISCONNECT")
+            publish_to_mqtt(debug_topic, "Central Disconnect")
 
         elif event == 3:  # 
             conn_handle, attr_handle = data
             print("GATT_WRITE")
+            publish_to_mqtt(debug_topic, "GATT Write")
 
         elif event == 4:  # 
             conn_handle, attr_handle = data
             print("GATTS_READ_REQUET")
+            publish_to_mqtt(debug_topic, "GATTS Read Request")
         
         elif event == 5:  # GAP scan result
             addr_type, addr, adv_type, rssi, adv_data = data
             print(f"Found device with address: {ubinascii.hexlify(addr)}")
+            publish_to_mqtt(debug_topic, "Found Device with Adress:")
             print(f"Found device with address: {bytes(addr)}")
+            publish_to_mqtt(debug_topic, bytes(addr))
             print(f"TARGET_MAC:", TARGET_MAC)
             print("Address type:", addr_type)
             print(f"Advertisement data: {ubinascii.hexlify(adv_data)}")
             print(f"Advertisement data: {bytes(adv_data)}")
             if addr == TARGET_MAC:
                 print(f"Found Berger-BATT with MAC: {ubinascii.hexlify(addr)}")
+                publish_to_mqtt(debug_topic, "found BERGER-BATT")
                 ble.gap_scan(None)  # Stop scanning
                 print("Scanning stopped")
+                publish_to_mqtt(debug_topic, "scanning stoped")
                 ble.gap_connect(addr_type, addr)  # Connect to the device
                 print("Berger-BATT connected")
+                publish_to_mqtt(debug_topic, "Berger-BATT conncted")
             
         elif event == 6:  # 
             print("SCAN_DONE")
+            publish_to_mqtt(debug_topic, "scan done")
             pass
 
         elif event == 7:  # Connection complete
@@ -118,27 +127,35 @@ def ble_irq(event, data):
         elif event == 8:  # 
             conn_handle, addr_type, addr = data
             print("PERIPHERAL DISCONNECT")
+            publish_to_mqtt(debug_topic, "Periphal disconnect")
         
         elif event == 9:  # Service result
             conn_handle, start_handle, end_handle, uuid = data
             print(f"Service UUID: {bluetooth.UUID(uuid)}")
+            publish_to_mqtt(debug_topic, "Service Result UUID:")
+            publish_to_mqtt(debug_topic, bluetooth.UUID(uuid))
             ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle, uuid=SERVICE_UUID)
 
         elif event == 10:  # 
             conn_handle, status = data
-            print(f"SERVICE DONE", status)  
+            print(f"SERVICE DONE", status)
+            publish_to_mqtt(debug_topic, "Service done")
         
         elif event == 11:  # Characteristic result
             conn_handle, def_handle, value_handle, properties, uuid = data
             print(f"Found characteristic with UUID: {bluetooth.UUID(uuid)}")
+            publish_to_mqtt(debug_topic, "Found Characteristic:")
+            publish_to_mqtt(debug_topic, bluetooth.UUID(uuid))
             if uuid == CHARACTERISTIC_UUID:
                 char_handle = value_handle
                 print(f"Found characteristic: {bluetooth.UUID(uuid)}")
+                publish_to_mqtt(debug_topic, "Found Characteristic FFF6")
                 ble.gattc_write(conn_handle, char_handle, struct.pack('<BB', 0x01, 0x00))  # Enable notifications
       
         elif event == 12:  # 
             conn_handle, status = data
             print(f"CHARACTERITIC DONE", status)
+            publish_to_mqtt(debug_topic, "Characteristic done")
             
         elif event == 18 or event == 19:  # Notification or indication
             conn_handle, value_handle, notify_data = data
@@ -147,12 +164,15 @@ def ble_irq(event, data):
             print("Char_Handle: ", char_handle)
             if value_handle == char_handle:
                 print("Notification received:", notify_data)
+                publish_to_mqtt(debug_topic, "Notification received:")
                 # Display part of the data array
                 print("Data segment:", notify_data[:5])  # Adjust the slice as needed
+                publish_to_mqtt(debug_topic, notify_data[:5])
                 
         elif event == 27:  # Connection update
             conn_handle, conn_interval, conn_latency, supervision_timeout = data
             print(f"Connection updated: handle={conn_handle}, interval={conn_interval}, latency={conn_latency}, timeout={supervision_timeout}")
+            publish_to_mqtt(debug_topic, "Connection Update")
             handle_connection_update(conn_handle, conn_interval, conn_latency, supervision_timeout)
             
     except Exception as e:
@@ -162,6 +182,7 @@ def mqtt_callback(topic, msg):
     print("Received message on topic:", topic.decode(), "with message:", msg.decode())
     if msg.decode() == 'now' and topic.decode() == ota_topic:
         print('OTA update message received.')
+        publish_to_mqtt(debug_topic, "OTA update message received:")
         if perform_ota_update():
             gc.collect()
             publish_to_mqtt(ota_topic, 'success')
@@ -184,7 +205,7 @@ def handle_connection_update(conn_handle, conn_interval, conn_latency, supervisi
         print("Connection parameters are outside acceptable range, considering reconnection...")
         ble.gap_disconnect(conn_handle)
         start_ble_scan()  # Try to reconnect
-        
+      
 def start_ble_scan():
     ble.irq(ble_irq)
     ble.gap_scan(10000, 30000, 30000)  # Active scan for 10 seconds
@@ -218,7 +239,7 @@ async def check_mqtt_messages_async():
     global mqtt_client
     mqtt_client.subscribe(MQTT_OTA_UPDATE)
     mqtt_client.subscribe(debug_topic)
-    publish_to_mqtt(debug_topic, 'mqtt-client subscribed')
+    publish_to_mqtt(debug_topic, "mqtt-client subscribed")
     while True:
         try:
             mqtt_client.wait_msg()
@@ -227,7 +248,7 @@ async def check_mqtt_messages_async():
             print(f"Error checking messages: {e}")
             reconnect_mqtt()
             gc.collect()
-        await asyncio.sleep(0)  # Yield control to allow other tasks to run
+        await asyncio.sleep(1)  # Yield control to allow other tasks to run
         
 def reconnect_mqtt():
     global mqtt_client
@@ -288,8 +309,10 @@ async def main_async():
         connect_to_wifi(wifi_ssid_test, wifi_password_test)
     sync_time()
     if connect_mqtt():
-        # Run both check_mqtt_messages_async and start_ble_scan_async concurrently
-        await asyncio.gather(check_mqtt_messages_async(), start_ble_scan())
-
+        # Start BLE scan once
+        start_ble_scan()
+        # Run check_mqtt_messages_async concurrently
+        await check_mqtt_messages_async()
+        
 if __name__ == '__main__':
     asyncio.run(main_async())
