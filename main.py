@@ -69,10 +69,13 @@ def ble_irq(event, data):
     global conn_handle, char_handle
 
     print('BLE-Scan Event:', event, 'with data:', data)
+    publish_to_mqtt(debug_topic, event)
+    publish_to_mqtt(debug_topic, data)
     try:
-        if event == 1:  # 
+        if event == 1:  # Connection established
             conn_handle, addr_type, addr = data
             print(f"WSP32 has connected with MAC: {ubinascii.hexlify(addr)}")
+            publish_to_mqtt(debug_topic, "Connection established")
             ble.gattc_discover_services(conn_handle)  # Discover services
         
         elif event == 2:  # 
