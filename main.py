@@ -112,7 +112,7 @@ def ble_irq(event, data):
                 publish_to_mqtt(debug_topic, "scanning stoped")
                 ble.gap_connect(addr_type, addr)  # Connect to the device
                 print("Berger-BATT connected")
-                publish_to_mqtt(debug_topic, "Berger-BATT conncted")
+                publish_to_mqtt(debug_topic, "Berger-BATT connected")
             
         elif event == 6:  # 
             print("SCAN_DONE")
