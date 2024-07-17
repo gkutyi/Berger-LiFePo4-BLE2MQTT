@@ -181,6 +181,7 @@ def ble_irq(event, data):
     
 def mqtt_callback(topic, msg):
     print("Received message on topic:", topic.decode(), "with message:", msg.decode())
+    publish_to_mqtt(debug_topic, "MQTT-Message received")
     if msg.decode() == 'now' and topic.decode() == ota_topic:
         print('OTA update message received.')
         publish_to_mqtt(debug_topic, "OTA update message received:")
@@ -242,8 +243,9 @@ def publish_to_mqtt(topic, value):
 
 async def check_mqtt_messages_async():
     global mqtt_client
-    mqtt_client.subscribe(MQTT_OTA_UPDATE)
+    mqtt_client.subscribe(ota_topic)
     mqtt_client.subscribe(debug_topic)
+    mqtt_client.subscribe(reset_topic)
     publish_to_mqtt(debug_topic, "mqtt-client subscribed")
     while True:
         try:
