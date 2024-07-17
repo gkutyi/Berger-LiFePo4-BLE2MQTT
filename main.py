@@ -12,7 +12,7 @@ import struct
 from umqtt.simple import MQTTClient
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD, SSID_TEST, PASSWORD_TEST
-from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_ESP32_DEBUG, MQTT_SSL
+from BROKER import MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PW, MQTT_TOPIC, MQTT_OTA_UPDATE, MQTT_ESP32_DEBUG, MQTT_ESP32_RESET, MQTT_SSL
 
 # Define the MAC address and UUID of the target BLE device
 TARGET_MAC = b'\x04\x7f\x0e\x9e\xd1\x64'
@@ -37,6 +37,7 @@ CLIENT_ID = 'ESP32WoMoClient'
 mqtt_topic = MQTT_TOPIC
 ota_topic = MQTT_OTA_UPDATE
 debug_topic = MQTT_ESP32_DEBUG
+reset_topic = MQTT_ESP32_RESET
 
 # Wi-Fi Connection Details
 wifi_ssid = SSID
@@ -188,6 +189,10 @@ def mqtt_callback(topic, msg):
             publish_to_mqtt(ota_topic, 'success')
         else:
             publish_to_mqtt(ota_topic, 'failure')
+    if msg.decode() == 'reset' and topic.decode() == reset_topic:
+        print('OTA update message received.')
+        publish_to_mqtt(debug_topic, "RESET message received:")
+        machine.reset()
 
 def handle_connection_update(conn_handle, conn_interval, conn_latency, supervision_timeout):
     # Define preferred parameters
