@@ -231,6 +231,7 @@ def connect_mqtt():
         mqtt_client.set_callback(mqtt_callback)
         mqtt_client.connect()
         print('Connected to MQTT-Broker')
+        publish_to_mqtt(debug_topic, "Connected to MQTT-Broker")
         return True
     except Exception as e:
         print(f"Failed to connect to MQTT broker: {e}")
@@ -313,13 +314,20 @@ def sync_time():
 
 async def main_async():
     if not connect_to_wifi(wifi_ssid, wifi_password):
-        connect_to_wifi(wifi_ssid_test, wifi_password_test)
+        if not connect_to_wifi(wifi_ssid_test, wifi_password_test):
+            print('Connect to WiFi failed')
+            publish_to_mqtt(debug_topic, "Connect to WiFi failed")
+            machine.reset()
     sync_time()
     if connect_mqtt():
         # Start BLE scan once
         start_ble_scan()
         # Run check_mqtt_messages_async concurrently
         await check_mqtt_messages_async()
+    else:
+        print('Connect to MQTT-Broker failed')
+        publish_to_mqtt(debug_topic, "MQTT-Broker not connected")
+        machine.reset()
         
 if __name__ == '__main__':
     asyncio.run(main_async())
