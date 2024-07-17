@@ -191,7 +191,7 @@ def mqtt_callback(topic, msg):
         else:
             publish_to_mqtt(ota_topic, 'failure')
     if msg.decode() == 'reset' and topic.decode() == reset_topic:
-        print('OTA update message received.')
+        print('Reset message received.')
         #publish_to_mqtt(debug_topic, "RESET message received:")
         machine.reset()
 
