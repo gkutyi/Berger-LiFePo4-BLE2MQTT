@@ -76,8 +76,8 @@ def ble_irq(event, data):
     try:
         if event == 1:  # Connection established
             conn_handle, addr_type, addr = data
-            print(f"WSP32 has connected with MAC: {ubinascii.hexlify(addr)}")
-            #publish_to_mqtt(debug_topic, "Connection established")
+            print(f"ESP32 has connected with MAC: {ubinascii.hexlify(addr)}")
+            publish_to_mqtt(debug_topic, "Connection established")
             ble.gattc_discover_services(conn_handle)  # Discover services
         
         elif event == 2:  # 
@@ -113,11 +113,11 @@ def ble_irq(event, data):
                 #publish_to_mqtt(debug_topic, "scanning stoped")
                 ble.gap_connect(addr_type, addr)  # Connect to the device
                 print("Berger-BATT connected")
-                #publish_to_mqtt(debug_topic, "Berger-BATT connected")
+                publish_to_mqtt(debug_topic, "Berger-BATT connected")
             
         elif event == 6:  # 
             print("SCAN_DONE")
-            #publish_to_mqtt(debug_topic, "scan done")
+            publish_to_mqtt(debug_topic, "scan done")
             pass
 
         elif event == 7:  # Connection complete
@@ -135,7 +135,7 @@ def ble_irq(event, data):
             print(f"Service UUID: {bluetooth.UUID(uuid)}")
             #publish_to_mqtt(debug_topic, "Service Result UUID:")
             #publish_to_mqtt(debug_topic, bluetooth.UUID(uuid))
-            ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle, uuid=SERVICE_UUID)
+            ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle, uuid)
 
         elif event == 10:  # 
             conn_handle, status = data
@@ -316,17 +316,19 @@ async def main_async():
     if not connect_to_wifi(wifi_ssid, wifi_password):
         if not connect_to_wifi(wifi_ssid_test, wifi_password_test):
             print('Connect to WiFi failed')
-            #publish_to_mqtt(debug_topic, "Connect to WiFi failed")
+            publish_to_mqtt(debug_topic, "Connect to WiFi failed")
             machine.reset()
+    publish_to_mqtt(debug_topic, "Connected to WiFi")
     sync_time()
     if connect_mqtt():
         # Start BLE scan once
+        publish_to_mqtt(debug_topic, "Broker connected")
         start_ble_scan()
         # Run check_mqtt_messages_async concurrently
         await check_mqtt_messages_async()
     else:
         print('Connect to MQTT-Broker failed')
-        #publish_to_mqtt(debug_topic, "MQTT-Broker not connected")
+        publish_to_mqtt(debug_topic, "MQTT-Broker not connected")
         machine.reset()
         
 if __name__ == '__main__':
