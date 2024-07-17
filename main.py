@@ -316,9 +316,7 @@ async def main_async():
     if not connect_to_wifi(wifi_ssid, wifi_password):
         if not connect_to_wifi(wifi_ssid_test, wifi_password_test):
             print('Connect to WiFi failed')
-            publish_to_mqtt(debug_topic, "Connect to WiFi failed")
             machine.reset()
-    publish_to_mqtt(debug_topic, "Connected to WiFi")
     sync_time()
     if connect_mqtt():
         # Start BLE scan once
