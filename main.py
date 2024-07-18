@@ -71,8 +71,8 @@ def ble_irq(event, data):
     global conn_handle, char_handle
 
     print('BLE-Scan Event:', event, 'with data:', data)
-    #publish_to_mqtt(debug_topic, event)
-    #publish_to_mqtt(debug_topic, data)
+    # publish_to_mqtt(debug_topic, event)
+    # publish_to_mqtt(debug_topic, data)
     try:
         if event == 1:  # Connection established
             conn_handle, addr_type, addr = data
@@ -80,100 +80,61 @@ def ble_irq(event, data):
             publish_to_mqtt(debug_topic, "Connection established")
             ble.gattc_discover_services(conn_handle)  # Discover services
         
-        elif event == 2:  # 
+        elif event == 2:  # Disconnection event
             conn_handle, addr_type, addr = data
             print("CENTRAL:DISCONNECT")
-            #publish_to_mqtt(debug_topic, "Central Disconnect")
+            # publish_to_mqtt(debug_topic, "Central Disconnect")
 
-        elif event == 3:  # 
-            conn_handle, attr_handle = data
-            print("GATT_WRITE")
-            #publish_to_mqtt(debug_topic, "GATT Write")
-
-        elif event == 4:  # 
-            conn_handle, attr_handle = data
-            print("GATTS_READ_REQUET")
-            #publish_to_mqtt(debug_topic, "GATTS Read Request")
-        
         elif event == 5:  # GAP scan result
             addr_type, addr, adv_type, rssi, adv_data = data
             print(f"Found device with address: {ubinascii.hexlify(addr)}")
-            #publish_to_mqtt(debug_topic, "Found Device with Adress:")
-            print(f"Found device with address: {bytes(addr)}")
-            #publish_to_mqtt(debug_topic, bytes(addr))
             print(f"TARGET_MAC:", TARGET_MAC)
             print("Address type:", addr_type)
             print(f"Advertisement data: {ubinascii.hexlify(adv_data)}")
-            print(f"Advertisement data: {bytes(adv_data)}")
             if addr == TARGET_MAC:
                 print(f"Found Berger-BATT with MAC: {ubinascii.hexlify(addr)}")
-                #publish_to_mqtt(debug_topic, "found BERGER-BATT")
+                # publish_to_mqtt(debug_topic, "found BERGER-BATT")
                 ble.gap_scan(None)  # Stop scanning
                 print("Scanning stopped")
-                #publish_to_mqtt(debug_topic, "scanning stoped")
+                # publish_to_mqtt(debug_topic, "scanning stoped")
                 ble.gap_connect(addr_type, addr)  # Connect to the device
                 print("Berger-BATT connected")
                 publish_to_mqtt(debug_topic, "Berger-BATT connected")
             
-        elif event == 6:  # 
-            print("SCAN_DONE")
-            publish_to_mqtt(debug_topic, "scan done")
-            pass
-
         elif event == 7:  # Connection complete
             conn_handle, addr_type, addr = data
             print(f"Berger-BATT Connected with MAC: {ubinascii.hexlify(addr)}")
             ble.gattc_discover_services(conn_handle)  # Discover services
         
-        elif event == 8:  # 
-            conn_handle, addr_type, addr = data
-            print("PERIPHERAL DISCONNECT")
-            #publish_to_mqtt(debug_topic, "Periphal disconnect")
-        
         elif event == 9:  # Service result
             conn_handle, start_handle, end_handle, uuid = data
             print(f"Service UUID: {bluetooth.UUID(uuid)}")
-            #publish_to_mqtt(debug_topic, "Service Result UUID:")
-            #publish_to_mqtt(debug_topic, bluetooth.UUID(uuid))
+            # publish_to_mqtt(debug_topic, "Service Result UUID:")
             ble.gattc_discover_characteristics(conn_handle, start_handle, end_handle, uuid)
 
-        elif event == 10:  # 
-            conn_handle, status = data
-            print(f"SERVICE DONE", status)
-            #publish_to_mqtt(debug_topic, "Service done")
-        
         elif event == 11:  # Characteristic result
             conn_handle, def_handle, value_handle, properties, uuid = data
             print(f"Found characteristic with UUID: {bluetooth.UUID(uuid)}")
-            #publish_to_mqtt(debug_topic, "Found Characteristic:")
-            #publish_to_mqtt(debug_topic, bluetooth.UUID(uuid))
             if uuid == CHARACTERISTIC_UUID:
                 char_handle = value_handle
                 print(f"Found characteristic: {bluetooth.UUID(uuid)}")
-                #publish_to_mqtt(debug_topic, "Found Characteristic FFF6")
-                ble.gattc_write(conn_handle, char_handle, struct.pack('<BB', 0x01, 0x00))  # Enable notifications
+                # publish_to_mqtt(debug_topic, "Found Characteristic FFF6")
+                ble.gattc_read(conn_handle, char_handle)  # Read the characteristic value
       
-        elif event == 12:  # 
-            conn_handle, status = data
-            print(f"CHARACTERITIC DONE", status)
-            #publish_to_mqtt(debug_topic, "Characteristic done")
-            
-        elif event == 18 or event == 19:  # Notification or indication
-            conn_handle, value_handle, notify_data = data
-            print("Event: ", event)
-            print("Value_Handle: ", value_handle)
-            print("Char_Handle: ", char_handle)
+        elif event == 12:  # Characteristic read complete
+            conn_handle, value_handle, char_data = data
             if value_handle == char_handle:
-                print("Notification received:", notify_data)
-                #publish_to_mqtt(debug_topic, "Notification received:")
-                # Display part of the data array
-                print("Data segment:", notify_data[:5])  # Adjust the slice as needed
-                #publish_to_mqtt(debug_topic, notify_data[:5])
-                
+                print(f"Data received from characteristic: {ubinascii.hexlify(char_data)}")
+                if ubinascii.hexlify(char_data) == b'3a3031353135303030304546457e':
+                    print("Data matches expected value")
+                    publish_to_mqtt(debug_topic, "Data matches expected value")
+                else:
+                    print("Data does not match expected value")
+                    publish_to_mqtt(debug_topic, "Data does not match expected value")
+            
         elif event == 27:  # Connection update
-            conn_handle, conn_interval, conn_latency, supervision_timeout = data
+            conn_handle, conn_interval, conn_latency, supervision_timeout, status = data
             print(f"Connection updated: handle={conn_handle}, interval={conn_interval}, latency={conn_latency}, timeout={supervision_timeout}")
-            #publish_to_mqtt(debug_topic, "Connection Update")
             handle_connection_update(conn_handle, conn_interval, conn_latency, supervision_timeout)
             
     except Exception as e:
